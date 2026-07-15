@@ -2,6 +2,32 @@
 const CODEX_KEY = 'memeCodex';
 let hype = 50;
 
+// Persistent lung state so the p6 Surprise Eye has real breath to react to.
+// getP6LungSurprise() reads 'p6_lungFragment'; we own it here so surprise is genuine.
+const _lung = (() => {
+  try { return JSON.parse(localStorage.getItem('p6_lungFragment') || '{}'); }
+  catch (e) { return {}; }
+})();
+if (typeof _lung.breath !== 'number') _lung.breath = 0.5;
+const _spore = { wound: 0.5 };
+
+// Compute a real surprise (0..1) by breathing the lung and asking the p6 eye engine.
+// The eye renders itself into the canvas with the correct 6-arg signature.
+function pulseSurprise(intensity = 0.75) {
+  _lung.breath = (_lung.breath + intensity * 0.6) % 6.28;
+  _spore.wound = Math.min(1, 0.35 + intensity * 0.5);
+  const c = document.getElementById('meme-hype-canvas');
+  if (c && window.p6LungSurpriseEye) {
+    const ctx = c.getContext('2d');
+    // draws the golden eye AND mutates _lung.breath / _lung.lastSurprise
+    window.p6LungSurpriseEye(ctx, c.width, c.height / 2, _lung, intensity, _spore, 0.2);
+  }
+  try { localStorage.setItem('p6_lungFragment', JSON.stringify(_lung)); } catch (e) {}
+  const s = (typeof _lung.lastSurprise === 'number') ? _lung.lastSurprise
+          : (window.getP6LungSurprise ? window.getP6LungSurprise() : 0.6);
+  return Math.max(0.15, s); // floor so hype always visibly moves
+}
+
 function updateFomo() {
   const el = document.getElementById('fomo');
   el.textContent = 'Meme Drop windows: Dawn/Eclipse/Midnight active • limited slots';
@@ -9,11 +35,12 @@ function updateFomo() {
 
 function recordMemeVoice() {
   const out = document.getElementById('voiceOut');
-  const s = window.getP6LungSurprise ? window.getP6LungSurprise(0.75) : 0.82;
-  hype = Math.min(100, hype + s * 30);
-  out.innerHTML = `<div class="card">Voice recorded. Hype +${(s*30|0)} (surprise ${s.toFixed(2)})</div>`;
+  const s = pulseSurprise(0.75);
+  const gain = Math.round(s * 30);
+  hype = Math.min(100, hype + gain);
+  out.innerHTML = `<div class="card">Voice recorded. Hype +${gain} (surprise ${s.toFixed(2)})</div>`;
   drawMemeHype(s);
-  if (s > 0.85) recordToCodex('voice', `Soul birthed with high resonance`);
+  recordToCodex('voice', `Soul birthed (resonance ${s.toFixed(2)})`);
 }
 
 function launchMeme() {
@@ -34,31 +61,70 @@ function exportToP17(name) {
   recordToCodex('export', `Exported ${name} to p17`);
 }
 
+// Real drop inventory — displayed slot counts are read from THIS state (code==display shield).
+const DROP_KEY = 'memeDrops';
+const DROPS = (() => {
+  const def = {
+    dawn:    { label: 'Dawn Drop',    icon: '\u{1F305}', slots: 9, cap: 9,  boost: 1.0 },
+    eclipse: { label: 'Eclipse Drop', icon: '\u{1F311}', slots: 2, cap: 2,  boost: 1.4 }
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(DROP_KEY) || 'null');
+    if (saved && saved.dawn && saved.eclipse) return saved;
+  } catch (e) {}
+  return def;
+})();
+function saveDrops() {
+  try { localStorage.setItem(DROP_KEY, JSON.stringify(DROPS)); } catch (e) {}
+}
+
 function showDrops() {
   const el = document.getElementById('dropList');
-  el.innerHTML = `
-    <div class="card">🌅 Dawn Drop (9 slots) <button onclick="joinDrop('dawn')">Join + Voice</button></div>
-    <div class="card">🌑 Eclipse (2 slots) <button onclick="joinDrop('eclipse')">Join (high FOMO)</button></div>
-  `;
+  el.innerHTML = Object.keys(DROPS).map(win => {
+    const d = DROPS[win];
+    const full = d.slots <= 0;
+    const odd = (100 / d.cap).toFixed(1); // honest: 1 winning slot out of cap
+    return `<div class="card drop${full ? ' full' : ''}">
+      <span class="drop-name">${d.icon} ${d.label}</span>
+      <span class="drop-meta">${d.slots}/${d.cap} slots · x${d.boost} · ${odd}% per slot</span>
+      <button ${full ? 'disabled' : ''} onclick="joinDrop('${win}')">${full ? 'Full' : 'Join + Voice'}</button>
+    </div>`;
+  }).join('');
 }
 
 function joinDrop(win) {
-  const s = window.getP6LungSurprise ? window.getP6LungSurprise(0.8) : 0.7;
-  const boost = win==='eclipse' ? 1.4 : 1;
-  hype = Math.min(100, hype + s*25*boost);
-  recordToCodex('drop', `Joined ${win} • hype boost`);
+  if ((DROPS[win] ? DROPS[win].slots : 0) <= 0) { alert('Drop full. No slots left.'); return; }
+  DROPS[win].slots -= 1;
+  saveDrops();
+  const s = pulseSurprise(0.8);
+  const boost = win === 'eclipse' ? 1.4 : 1;
+  hype = Math.min(100, hype + Math.round(s * 25 * boost));
+  recordToCodex('drop', `Joined ${DROPS[win].label} • hype boost x${boost}`);
   drawMemeHype(s);
-  alert('Joined. Voice power added. Time limited.');
+  showDrops();
+  alert(`Joined ${DROPS[win].label}. ${DROPS[win].slots} slots left.`);
 }
 
 function drawMemeHype(s=0.7) {
   const c = document.getElementById('meme-hype-canvas');
   if(!c) return;
   const ctx = c.getContext('2d');
-  ctx.clearRect(0,0,c.width,c.height);
-  ctx.fillStyle = `hsla(280,70%,65%,${s})`;
-  ctx.fillRect(20,20, (hype/100)*240 , 50);
-  if (window.p6LungSurpriseEye) window.p6LungSurpriseEye(s);
+  const W = c.width, H = c.height;
+  ctx.clearRect(0,0,W,H);
+  // Track
+  ctx.fillStyle = 'rgba(255,255,255,0.06)';
+  ctx.fillRect(20, H/2 - 9, W - 40, 18);
+  // Hype fill — accent gradient, the one bold moment
+  const fillW = ((hype/100) * (W - 40));
+  const grad = ctx.createLinearGradient(20, 0, 20 + (W-40), 0);
+  grad.addColorStop(0, '#7c5cff');
+  grad.addColorStop(1, '#c9a34a');
+  ctx.fillStyle = grad;
+  ctx.fillRect(20, H/2 - 9, fillW, 18);
+  // Golden p6 surprise eye — correct 6-arg signature, renders for real over the bar
+  if (window.p6LungSurpriseEye) {
+    window.p6LungSurpriseEye(ctx, W, H/2, _lung, s, _spore, 0.15);
+  }
 }
 
 function recordToCodex(type, text) {
