@@ -15,10 +15,15 @@
   <main>
     <section>
       <h2>Create with p6 Voice</h2>
+      <div class="coin-form">
+        <input id="coinName" maxlength="20" placeholder="Coin name (e.g. Doge Reborn)" autocomplete="off">
+        <input id="coinTicker" maxlength="6" placeholder="TICKER" autocomplete="off" class="ticker-in">
+      </div>
       <button onclick="recordMemeVoice()">Record Voice for Meme Soul</button>
       <div id="voiceOut"></div>
-      <button onclick="launchMeme()">Launch (p10 fee + FOMO)</button>
-      <button onclick="shareMemeFate()">Share Meme Fate (virality)</button>
+      <button onclick="launchMeme()">Launch on Bonding Curve</button>
+      <div id="launchOut"></div>
+      <button onclick="shareMemeFate()">Share My Coin (virality)</button>
     </section>
     <section id="drops">
       <h2>Meme Drop FOMO Windows</h2>

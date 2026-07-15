@@ -72,6 +72,37 @@ section { margin: 0; }
   font-size: 0.9rem;
 }
 
+/* ---- Coin identity form ---- */
+.coin-form { display: flex; gap: 8px; margin: 8px 0 12px; }
+.coin-form input {
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 9px 12px;
+  flex: 1;
+  min-width: 0;
+}
+.coin-form input:focus { outline: none; border-color: var(--accent); }
+.coin-form input::placeholder { color: #6e6555; }
+.coin-form .ticker-in {
+  flex: 0 0 92px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* ---- Live launch curve readout ---- */
+.curve-live { border-color: rgba(201,163,74,0.35); }
+.curve-live.done { border-color: rgba(201,163,74,0.6); box-shadow: 0 0 24px -10px rgba(201,163,74,0.5); }
+.curve-row { display: flex; align-items: baseline; gap: 8px; font-size: 1rem; }
+.curve-mult { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+.curve-live .drop-meta { margin-top: 4px; }
+.whale { color: var(--violet); font-weight: 600; }
+
 /* Drop rows: name / meta / action on one honest line */
 .drop { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .drop-name { font-weight: 600; }
