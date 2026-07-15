@@ -1,0 +1,5 @@
+:root { --bg:#0a0806; --fg:#e6d9b8; --accent:#a38cd1; }
+body { background:var(--bg); color:var(--fg); font-family:system-ui; padding:16px; max-width:618px; margin:auto; }
+.card { background:#121217; padding:10px; border-radius:8px; margin:6px 0; border:1px solid #333; }
+button { background:var(--accent); color:#111; border:none; padding:8px 12px; border-radius:6px; margin:4px; }
+.fomo { background:#2a1f2e; padding:4px; border-radius:99px; font-size:0.75rem; }
