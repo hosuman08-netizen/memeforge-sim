@@ -1,43 +1,42 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>p18 · MemeForge</title>
+  <title>MemeForge</title>
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
   <header>
-    <h1>MemeForge <span class="tag">Base</span></h1>
-    <p class="tag">Speak a meme into a coin. Ride the drop window before it closes.</p>
+    <h1>MemeForge <span class="tag">demo</span></h1>
+    <p class="tag">Forge a meme into a coin and ride its bonding curve before the drop window closes.</p>
     <div id="fomo" class="fomo"></div>
   </header>
   <main>
     <section>
-      <h2>Create with p6 Voice</h2>
+      <h2>Forge your coin</h2>
       <div class="coin-form">
         <input id="coinName" maxlength="20" placeholder="Coin name (e.g. Doge Reborn)" autocomplete="off">
         <input id="coinTicker" maxlength="6" placeholder="TICKER" autocomplete="off" class="ticker-in">
       </div>
-      <button onclick="recordMemeVoice()">Record Voice for Meme Soul</button>
+      <button onclick="recordMemeVoice()">Record Hype Voice</button>
       <div id="voiceOut"></div>
       <button onclick="launchMeme()">Launch on Bonding Curve</button>
       <div id="launchOut"></div>
-      <button onclick="shareMemeFate()">Share My Coin (virality)</button>
+      <button onclick="shareMemeFate()">Share My Coin</button>
     </section>
     <section id="drops">
-      <h2>Meme Drop FOMO Windows</h2>
+      <h2>Meme Drop Windows</h2>
       <div id="dropList"></div>
     </section>
     <section>
-      <h2>Your Creations + Relics</h2>
+      <h2>Hype meter &amp; history</h2>
       <canvas id="meme-hype-canvas" width="320" height="120"></canvas>
       <div id="creations"></div>
     </section>
-    <nav class="cross"><a href="../p17-coin-wallet-app/index.html">Export to p17</a> <a href="../p16-web3-ad-platform/index.html">p16 Promote</a></nav>
   </main>
-  <footer><small>FICTIONAL • Variable hype • 18+ • Prominent disclosure</small></footer>
-  <script src="lung-surprise-eye.js"></script>
+  <footer><small>FICTIONAL SIMULATION ONLY • Not real money, tokens, or investment advice • 18+</small></footer>
+  <script src="hype-eye.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 // p18 MemeForge — minimal offline shell service worker
 const CACHE = 'memeforge-v1';
-const ASSETS = ['./index.html', './style.css', './script.js', './lung-surprise-eye.js', './manifest.json'];
+const ASSETS = ['./index.html', './style.css', './script.js', './hype-eye.js', './manifest.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).catch(() => {}));

@@ -1,36 +1,28 @@
-// p18 MemeForge on Base - p6 voice + FOMO drops + p17 export + relics
-const CODEX_KEY = 'memeCodex';
+// MemeForge — forge a meme into a coin, ride its bonding curve.
+// Fictional simulation only. No real money, tokens, or blockchain.
+const HISTORY_KEY = 'memeforge.history';
 let hype = 50;
 
-// Persistent lung state so the p6 Surprise Eye has real breath to react to.
-// getP6LungSurprise() reads 'p6_lungFragment'; we own it here so surprise is genuine.
-const _lung = (() => {
-  try { return JSON.parse(localStorage.getItem('p6_lungFragment') || '{}'); }
-  catch (e) { return {}; }
-})();
-if (typeof _lung.breath !== 'number') _lung.breath = 0.5;
-const _spore = { wound: 0.5 };
+// Decorative eye state — gives the golden hype eye real motion to react to.
+const _eye = { pulse: 0.5 };
+const _mood = { energy: 0.5 };
 
-// Compute a real surprise (0..1) by breathing the lung and asking the p6 eye engine.
-// The eye renders itself into the canvas with the correct 6-arg signature.
+// Nudge the eye and return a surprise value (0..1) that drives hype gains.
 function pulseSurprise(intensity = 0.75) {
-  _lung.breath = (_lung.breath + intensity * 0.6) % 6.28;
-  _spore.wound = Math.min(1, 0.35 + intensity * 0.5);
+  _eye.pulse = (_eye.pulse + intensity * 0.6) % 6.28;
+  _mood.energy = Math.min(1, 0.35 + intensity * 0.5);
   const c = document.getElementById('meme-hype-canvas');
-  if (c && window.p6LungSurpriseEye) {
+  if (c && window.hypeEye) {
     const ctx = c.getContext('2d');
-    // draws the golden eye AND mutates _lung.breath / _lung.lastSurprise
-    window.p6LungSurpriseEye(ctx, c.width, c.height / 2, _lung, intensity, _spore, 0.2);
+    window.hypeEye(ctx, c.width, c.height / 2, _eye, intensity, _mood, 0.2);
   }
-  try { localStorage.setItem('p6_lungFragment', JSON.stringify(_lung)); } catch (e) {}
-  const s = (typeof _lung.lastSurprise === 'number') ? _lung.lastSurprise
-          : (window.getP6LungSurprise ? window.getP6LungSurprise() : 0.6);
+  const s = (typeof _eye.lastSurprise === 'number') ? _eye.lastSurprise : 0.6;
   return Math.max(0.15, s); // floor so hype always visibly moves
 }
 
 function updateFomo() {
   const el = document.getElementById('fomo');
-  el.textContent = 'Meme Drop windows: Dawn/Eclipse/Midnight active • limited slots';
+  el.textContent = 'Meme Drop windows: Dawn / Eclipse active • limited slots';
 }
 
 function recordMemeVoice() {
@@ -38,25 +30,25 @@ function recordMemeVoice() {
   const s = pulseSurprise(0.75);
   const gain = Math.round(s * 30);
   hype = Math.min(100, hype + gain);
-  out.innerHTML = `<div class="card">Voice recorded. Hype +${gain} (surprise ${s.toFixed(2)})</div>`;
+  out.innerHTML = `<div class="card">Hype voice recorded. Hype +${gain} (surprise ${s.toFixed(2)})</div>`;
   drawMemeHype(s);
-  recordToCodex('voice', `Soul birthed (resonance ${s.toFixed(2)})`);
+  recordToHistory('voice', `Hype voice recorded (resonance ${s.toFixed(2)})`);
 }
 
 // ---- The live coin the user is forging. Real identity, real curve state. ----
-let coin = null;          // { name, ticker, supply, reserve, price, mcap, holders, launched }
+let coin = null;          // { name, ticker, reserve, sold, holders, trades, launched, peakPrice }
 let curveTimer = null;
 
-// Constant-product bonding curve (Uniswap-style x*y=k), the real memecoin launch primitive.
-// price = reserve / (SUPPLY_TOTAL - tokensSold). Every buy pulls tokens out → price climbs the curve.
-const SUPPLY_TOTAL = 1_000_000_000;      // 1B fixed supply
-const VIRTUAL_RESERVE = 3;               // virtual ETH seed → smooth early curve
+// Constant-product bonding curve (Uniswap-style x*y=k), the memecoin launch primitive.
+// price = reserve / (SUPPLY_TOTAL - tokensSold). Every buy pulls tokens out → price climbs.
+const SUPPLY_TOTAL = 1_000_000_000;      // 1B fixed supply (fictional)
+const VIRTUAL_RESERVE = 3;               // virtual reserve seed → smooth early curve
 const K = VIRTUAL_RESERVE * SUPPLY_TOTAL; // x*y=k invariant
 
 function makeCoin(name, ticker) {
   return {
     name, ticker,
-    reserve: VIRTUAL_RESERVE,   // ETH in the curve
+    reserve: VIRTUAL_RESERVE,   // reserve in the curve
     sold: 0,                    // tokens bought out of the curve
     holders: 0,
     trades: 0,
@@ -68,12 +60,11 @@ function makeCoin(name, ticker) {
 function coinPrice(c) { return c.reserve / (SUPPLY_TOTAL - c.sold); }
 function coinMcap(c)  { return coinPrice(c) * SUPPLY_TOTAL; }
 
-// Execute one real buy of `eth` into the curve. Returns tokens received (curve math).
-function curveBuy(c, eth) {
+// Execute one buy of `amt` into the curve. Returns tokens received (curve math).
+function curveBuy(c, amt) {
   const remaining = SUPPLY_TOTAL - c.sold;
-  const newReserve = c.reserve + eth;
-  // x*y=k: tokens the buyer receives so the invariant holds
-  const newRemaining = K / newReserve;
+  const newReserve = c.reserve + amt;
+  const newRemaining = K / newReserve;   // x*y=k: tokens the buyer receives
   const tokensOut = Math.max(0, remaining - newRemaining);
   c.reserve = newReserve;
   c.sold += tokensOut;
@@ -85,11 +76,11 @@ function curveBuy(c, eth) {
 
 function fmtEth(n)  { return n < 0.001 ? n.toExponential(2) : n.toFixed(4); }
 function fmtUsd(n)  {
-  if (n >= 1e6) return '$' + (n/1e6).toFixed(2) + 'M';
-  if (n >= 1e3) return '$' + (n/1e3).toFixed(1) + 'K';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(1) + 'K';
   return '$' + n.toFixed(0);
 }
-const ETH_USD = 3400; // fictional display rate
+const DISPLAY_RATE = 3400; // fictional reserve→USD display rate
 
 function launchMeme() {
   const nameEl = document.getElementById('coinName');
@@ -102,11 +93,11 @@ function launchMeme() {
 
   coin = makeCoin(name, ticker);
   const fee = Math.floor(10 * (1 + (100 - hype) / 100));
-  recordToCodex('launch', `$${ticker} "${name}" launched on curve • hype ${hype|0} • p10 fee ${fee}`);
+  recordToHistory('launch', `$${ticker} "${name}" launched on curve • hype ${hype | 0} • launch fee ${fee}`);
   runLaunchCurve();
 }
 
-// The real launch: hype becomes buy pressure that walks the coin up its bonding curve, tick by tick.
+// The launch: hype becomes buy pressure that walks the coin up its curve, tick by tick.
 function runLaunchCurve() {
   const out = document.getElementById('launchOut');
   let tick = 0;
@@ -117,10 +108,10 @@ function runLaunchCurve() {
 
   curveTimer = setInterval(() => {
     tick++;
-    // variable-ratio buy flow: some ticks are whales, most are small — real market texture
+    // variable buy flow: some ticks are whales, most are small — real market texture
     const whale = Math.random() < 0.12 * pressure;
-    const eth = (whale ? 0.4 + Math.random() * 0.8 : 0.01 + Math.random() * 0.12) * pressure;
-    const tokens = curveBuy(coin, eth);
+    const amt = (whale ? 0.4 + Math.random() * 0.8 : 0.01 + Math.random() * 0.12) * pressure;
+    const tokens = curveBuy(coin, amt);
     if (tokens > 0 && Math.random() < 0.6 + pressure * 0.3) coin.holders++;
 
     const price = coinPrice(coin);
@@ -133,7 +124,7 @@ function runLaunchCurve() {
     out.innerHTML =
       `<div class="card curve-live">` +
         `<div class="curve-row"><b>$${coin.ticker}</b> <span class="curve-mult">${mult.toFixed(2)}×</span></div>` +
-        `<div class="drop-meta">price ${fmtEth(price)} ETH · mcap ${fmtUsd(mcap * ETH_USD)} · ${coin.holders} holders · ${coin.trades} trades` +
+        `<div class="drop-meta">price ${fmtEth(price)} · mcap ${fmtUsd(mcap * DISPLAY_RATE)} · ${coin.holders} holders · ${coin.trades} trades` +
         `${whale ? ' · <span class="whale">🐋 whale buy</span>' : ''}</div>` +
       `</div>`;
 
@@ -142,31 +133,19 @@ function runLaunchCurve() {
       const finalMcap = coinMcap(coin);
       const finalMult = coinPrice(coin) / openPrice;
       coin.launched = Date.now();
-      recordToCodex('curve', `$${coin.ticker} closed launch at ${finalMult.toFixed(2)}× · mcap ${fmtUsd(finalMcap * ETH_USD)}`);
-      exportToP17(coin);
+      recordToHistory('curve', `$${coin.ticker} closed launch at ${finalMult.toFixed(2)}× · mcap ${fmtUsd(finalMcap * DISPLAY_RATE)}`);
       out.innerHTML =
         `<div class="card curve-live done">` +
           `<div class="curve-row"><b>$${coin.ticker}</b> launched · <span class="curve-mult">${finalMult.toFixed(2)}×</span></div>` +
-          `<div class="drop-meta">final mcap ${fmtUsd(finalMcap * ETH_USD)} · ${coin.holders} holders · exported to p17. Share it to seed more buys.</div>` +
+          `<div class="drop-meta">final mcap ${fmtUsd(finalMcap * DISPLAY_RATE)} · ${coin.holders} holders · saved to history. Share it to seed more buys.</div>` +
         `</div>`;
     }
   }, 100);
   hype = Math.max(20, hype - 8);
 }
 
-function exportToP17(c) {
-  const p17Codex = JSON.parse(localStorage.getItem('walletCodex') || '[]');
-  p17Codex.unshift({
-    ts: Date.now(), type: 'p18-meme', text: `$${c.ticker} ${c.name}`,
-    power: Math.round(coinMcap(c) * ETH_USD / 1000), level: 2,
-    ticker: c.ticker, mcap: coinMcap(c) * ETH_USD, holders: c.holders
-  });
-  localStorage.setItem('walletCodex', JSON.stringify(p17Codex));
-  recordToCodex('export', `Exported $${c.ticker} to p17 wallet`);
-}
-
-// Real drop inventory — displayed slot counts are read from THIS state (code==display shield).
-const DROP_KEY = 'memeDrops';
+// Real drop inventory — displayed slot counts are read from THIS state (code == display).
+const DROP_KEY = 'memeforge.drops';
 const DROPS = (() => {
   const def = {
     dawn:    { label: 'Dawn Drop',    icon: '\u{1F305}', slots: 9, cap: 9,  boost: 1.0 },
@@ -203,35 +182,35 @@ function joinDrop(win) {
   const s = pulseSurprise(0.8);
   const boost = win === 'eclipse' ? 1.4 : 1;
   hype = Math.min(100, hype + Math.round(s * 25 * boost));
-  recordToCodex('drop', `Joined ${DROPS[win].label} • hype boost x${boost}`);
+  recordToHistory('drop', `Joined ${DROPS[win].label} • hype boost x${boost}`);
   drawMemeHype(s);
   showDrops();
   alert(`Joined ${DROPS[win].label}. ${DROPS[win].slots} slots left.`);
 }
 
-function drawMemeHype(s=0.7) {
+function drawMemeHype(s = 0.7) {
   const c = document.getElementById('meme-hype-canvas');
-  if(!c) return;
+  if (!c) return;
   const ctx = c.getContext('2d');
   const W = c.width, H = c.height;
-  ctx.clearRect(0,0,W,H);
+  ctx.clearRect(0, 0, W, H);
   // Track
   ctx.fillStyle = 'rgba(255,255,255,0.06)';
-  ctx.fillRect(20, H/2 - 9, W - 40, 18);
+  ctx.fillRect(20, H / 2 - 9, W - 40, 18);
   // Hype fill — accent gradient, the one bold moment
-  const fillW = ((hype/100) * (W - 40));
-  const grad = ctx.createLinearGradient(20, 0, 20 + (W-40), 0);
+  const fillW = ((hype / 100) * (W - 40));
+  const grad = ctx.createLinearGradient(20, 0, 20 + (W - 40), 0);
   grad.addColorStop(0, '#7c5cff');
   grad.addColorStop(1, '#c9a34a');
   ctx.fillStyle = grad;
-  ctx.fillRect(20, H/2 - 9, fillW, 18);
-  // Golden p6 surprise eye — correct 6-arg signature, renders for real over the bar
-  if (window.p6LungSurpriseEye) {
-    window.p6LungSurpriseEye(ctx, W, H/2, _lung, s, _spore, 0.15);
+  ctx.fillRect(20, H / 2 - 9, fillW, 18);
+  // Golden surprise eye renders over the bar
+  if (window.hypeEye) {
+    window.hypeEye(ctx, W, H / 2, _eye, s, _mood, 0.15);
   }
 }
 
-// Live bonding-curve chart: plots the real price path (log-scaled) climbing as buys fill in.
+// Live bonding-curve chart: plots the price path (log-scaled) climbing as buys fill in.
 const _curvePts = [];
 function drawCurve(open, price, progress, whale) {
   const c = document.getElementById('meme-hype-canvas');
@@ -240,12 +219,10 @@ function drawCurve(open, price, progress, whale) {
   const W = c.width, H = c.height;
   const pad = 18;
   if (progress <= 0.03) _curvePts.length = 0;
-  // store multiple (log) so early + late are both visible
   _curvePts.push(Math.log10(price / open + 0.0001) + 0.001);
   if (_curvePts.length > 240) _curvePts.shift();
 
   ctx.clearRect(0, 0, W, H);
-  // baseline track
   ctx.fillStyle = 'rgba(255,255,255,0.05)';
   ctx.fillRect(pad, H - pad, W - pad * 2, 1.5);
 
@@ -288,35 +265,42 @@ function drawCurve(open, price, progress, whale) {
   ctx.arc(lx, ly, whale ? 5 : 3, 0, Math.PI * 2);
   ctx.fill();
 
-  // golden p6 surprise eye still watches, driven by the launch momentum
-  if (window.p6LungSurpriseEye) {
+  // golden surprise eye still watches, driven by launch momentum
+  if (window.hypeEye) {
     const s = Math.min(1, (price / open - 1) * 0.15 + (whale ? 0.4 : 0.1));
-    window.p6LungSurpriseEye(ctx, W, H * 0.42, _lung, s, _spore, whale ? 0.3 : 0.1);
+    window.hypeEye(ctx, W, H * 0.42, _eye, s, _mood, whale ? 0.3 : 0.1);
   }
 }
 
-function recordToCodex(type, text) {
-  let codex = JSON.parse(localStorage.getItem(CODEX_KEY)||'[]');
-  codex.unshift({ts:Date.now(), type, text, relicLevel: (type==='voice'?2:1), power: hype|0 });
-  localStorage.setItem(CODEX_KEY, JSON.stringify(codex.slice(0,15)));
+function recordToHistory(type, text) {
+  let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  list.unshift({ ts: Date.now(), type, text, power: hype | 0 });
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 15)));
   showCreations();
 }
 
 function showCreations() {
   const el = document.getElementById('creations');
-  const codex = JSON.parse(localStorage.getItem(CODEX_KEY)||'[]');
-  el.innerHTML = codex.map((r,i)=>`<div class="card" onclick="reObserve(${i})">${new Date(r.ts).toLocaleTimeString()} ${r.text} Lv${r.relicLevel} P${r.power}</div>`).join('');
+  const list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  el.innerHTML = list.map((r, i) =>
+    `<div class="card" onclick="boostEntry(${i})">${new Date(r.ts).toLocaleTimeString()} ${r.text} · Hype ${r.power}</div>`
+  ).join('');
 }
 
-function reObserve(i) {
-  let codex = JSON.parse(localStorage.getItem(CODEX_KEY)||'[]');
-  if (codex[i]) { codex[i].power +=12; localStorage.setItem(CODEX_KEY,JSON.stringify(codex)); drawMemeHype(0.95); showCreations(); }
+function boostEntry(i) {
+  let list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  if (list[i]) {
+    list[i].power += 12;
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+    drawMemeHype(0.95);
+    showCreations();
+  }
 }
 
 // Virality: share the user's ACTUAL coin — name, ticker, real curve result seed more buys.
 function shareMemeFate() {
   if (!coin || !coin.trades) { alert('Launch a coin first, then share its run.'); return; }
-  const mcap = fmtUsd(coinMcap(coin) * ETH_USD);
+  const mcap = fmtUsd(coinMcap(coin) * DISPLAY_RATE);
   const story =
     `$${coin.ticker} "${coin.name}" is live on the bonding curve.\n` +
     `mcap ${mcap} · ${coin.holders} holders · ${coin.trades} trades. Ape in before the curve steepens.\n` +
@@ -327,7 +311,7 @@ function shareMemeFate() {
     navigator.clipboard.writeText(story).then(done).catch(done);
   } else { done(); }
 
-  // Sharing feeds real buy pressure back into the live curve (referral seed → more holders).
+  // Sharing feeds buy pressure back into the live curve (referral seed → more holders).
   if (!curveTimer) {
     const seed = 0.05 + Math.random() * 0.15;
     curveBuy(coin, seed);
@@ -335,14 +319,11 @@ function shareMemeFate() {
     drawCurve(coinPrice(coin) / 1.02, coinPrice(coin), 0.99, true);
   }
 
-  const f = JSON.parse(localStorage.getItem('fateCodex') || '[]');
-  f.unshift({ ts: Date.now(), type: 'p18-meme-fate', text: `$${coin.ticker} ${mcap}`, score: Math.min(100, coin.holders + coin.trades) });
-  localStorage.setItem('fateCodex', JSON.stringify(f.slice(0, 30)));
-  recordToCodex('share', `Shared $${coin.ticker} · ${mcap} · seeded curve`);
+  recordToHistory('share', `Shared $${coin.ticker} · ${mcap} · seeded curve`);
 }
 
 function init() {
   updateFomo(); showDrops(); showCreations(); drawMemeHype(0.6);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 }
-window.onload=init;
+window.onload = init;
