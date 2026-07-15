@@ -1,5 +1,126 @@
-:root { --bg:#0a0806; --fg:#e6d9b8; --accent:#a38cd1; }
-body { background:var(--bg); color:var(--fg); font-family:system-ui; padding:16px; max-width:618px; margin:auto; }
-.card { background:#121217; padding:10px; border-radius:8px; margin:6px 0; border:1px solid #333; }
-button { background:var(--accent); color:#111; border:none; padding:8px 12px; border-radius:6px; margin:4px; }
-.fomo { background:#2a1f2e; padding:4px; border-radius:99px; font-size:0.75rem; }
+/* p18 MemeForge — SENSE pass: 1 protagonist, 60/30/10, 8px grid, restraint */
+:root {
+  --bg:      #0a0806;   /* 60 base */
+  --surface: #14110d;
+  --line:    #262019;
+  --fg:      #e9dcc0;   /* text */
+  --muted:   #9a8f78;   /* 30 secondary */
+  --accent:  #c9a34a;   /* 10 gold — reserved for the ONE primary action + hero */
+  --violet:  #7c5cff;   /* hero glow only, not UI chrome */
+  --space:   8px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: radial-gradient(120% 80% at 50% -10%, #16110b 0%, var(--bg) 60%);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  padding: 24px 16px 40px;
+  max-width: 560px;
+  margin: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Header / hierarchy ---- */
+header { margin-bottom: 24px; }
+h1 {
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+}
+h1 .tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--accent);
+  vertical-align: middle;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border: 1px solid rgba(201,163,74,0.35);
+  border-radius: 99px;
+}
+h2 {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 32px 0 12px;
+}
+p.tag { color: var(--muted); font-size: 0.82rem; margin: 4px 0; }
+
+.fomo {
+  margin-top: 12px;
+  background: rgba(124,92,255,0.10);
+  border: 1px solid rgba(124,92,255,0.22);
+  color: #cfc3ff;
+  padding: 8px 14px;
+  border-radius: 99px;
+  font-size: 0.75rem;
+}
+
+/* ---- Cards / grid ---- */
+section { margin: 0; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 8px 0;
+  font-size: 0.9rem;
+}
+
+/* Drop rows: name / meta / action on one honest line */
+.drop { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.drop-name { font-weight: 600; }
+.drop-meta { color: var(--muted); font-size: 0.76rem; font-variant-numeric: tabular-nums; }
+.drop button { margin-left: auto; }
+.drop.full { opacity: 0.5; }
+
+/* ---- Buttons: ONE gold protagonist, rest quiet ghosts ---- */
+button {
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--line);
+  padding: 9px 16px;
+  border-radius: 10px;
+  margin: 4px 6px 4px 0;
+  cursor: pointer;
+  transition: transform 140ms ease-out, background 140ms ease-out, border-color 140ms ease-out;
+}
+button:hover { background: rgba(255,255,255,0.04); border-color: var(--muted); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: 0.4; cursor: default; }
+
+/* The single primary action wears the gold */
+button[onclick^="launchMeme"] {
+  background: linear-gradient(180deg, #d8b25a, var(--accent));
+  color: #1a1206;
+  border-color: transparent;
+}
+button[onclick^="launchMeme"]:hover { background: linear-gradient(180deg, #e6c069, #d0a94f); }
+
+/* ---- Hero canvas: the living meme soul ---- */
+#meme-hype-canvas {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  margin: 4px 0 8px;
+  border-radius: 12px;
+  background: #100c08;
+  border: 1px solid var(--line);
+  box-shadow: 0 0 40px -12px rgba(201,163,74,0.35);
+}
+
+/* ---- Cross nav / footer ---- */
+.cross { margin-top: 28px; display: flex; gap: 16px; }
+.cross a { color: var(--muted); font-size: 0.82rem; text-decoration: none; border-bottom: 1px solid transparent; }
+.cross a:hover { color: var(--accent); border-bottom-color: rgba(201,163,74,0.4); }
+footer { margin-top: 32px; }
+footer small { color: #6e6555; font-size: 0.72rem; letter-spacing: 0.02em; }
