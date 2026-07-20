@@ -1,3 +1,6 @@
+
+/* LEGION_WAVE_55_session_counter */
+try{if(!sessionStorage.getItem('lw_p18_memecoin_session_counter')){sessionStorage.setItem('lw_p18_memecoin_session_counter','1');localStorage.setItem('lw_p18_memecoin_session_counter',String((+(localStorage.getItem('lw_p18_memecoin_session_counter')||0))+1));}}catch(e){}
 /* ============================================================================
    MemeForge — a bonding-curve launchpad simulator.
 
