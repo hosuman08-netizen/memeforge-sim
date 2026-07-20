@@ -175,9 +175,11 @@ function runLaunchCurve() {
 function openTrading() {
   wallet = { cash: START_CASH, bag: 0, costBasis: 0 };
   market = { momentum: 0.6, ticks: 0, tone: 'warming up' };
+  resetLive();
   const sec = document.getElementById('trade');
   if (sec) sec.hidden = false;
   renderTrade('Coin is live. Ape in before the next green candle — or wait for a dip.');
+  drawLive(false);
   if (market.timer) clearInterval(market.timer);
   market.timer = setInterval(marketTick, 600);
 }
@@ -207,8 +209,77 @@ function marketTick() {
     market.tone = 'chopping sideways';
   }
   renderTrade(event);
-  const p = coinPrice(coin);
-  drawCurve(coin.peakPrice > 0 ? coin.peakPrice / 6 : p, p, 0.5, event.includes('🐋') || event.includes('🩸'));
+  drawLive(event.includes('🐋') || event.includes('🩸'));
+}
+
+// Live price ribbon: a rolling, auto-scaled chart of the REAL price, with the
+// user's average entry drawn as a line so profit/loss is visible at a glance.
+const _liveP = [];
+function drawLive(spike) {
+  const c = document.getElementById('meme-hype-canvas');
+  if (!c || !coin) return;
+  const ctx = c.getContext('2d');
+  const W = c.width, H = c.height, pad = 18;
+  _liveP.push(coinPrice(coin));
+  if (_liveP.length > 160) _liveP.shift();
+
+  // break-even reference line, drawn only while holding a bag
+  const refs = (wallet && wallet.bag > 0 && wallet.costBasis > 0)
+    ? [priceForBasis()] : [];
+
+  let lo = Math.min(..._liveP), hi = Math.max(..._liveP, ...refs.filter(Boolean));
+  if (refs[0]) lo = Math.min(lo, refs[0]);
+  const span = (hi - lo) || hi || 1e-9;
+  const yOf = v => (H - pad) - ((v - lo) / span) * (H - pad * 2);
+  const n = _liveP.length;
+  const xOf = i => pad + (i / Math.max(1, n - 1)) * (W - pad * 2);
+
+  ctx.clearRect(0, 0, W, H);
+
+  // entry reference line (where the user broke even)
+  if (refs[0]) {
+    const ey = yOf(refs[0]);
+    ctx.strokeStyle = 'rgba(233,220,192,0.28)';
+    ctx.setLineDash([4, 4]); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(pad, ey); ctx.lineTo(W - pad, ey); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // trend colour: green if last price above entry (or rising), red if below/falling
+  const up = _liveP[n - 1] >= (refs[0] || _liveP[0]);
+  const stroke = up ? '#7ad19b' : '#e0736f';
+
+  // area fill
+  const grad = ctx.createLinearGradient(0, pad, 0, H - pad);
+  grad.addColorStop(0, up ? 'rgba(122,209,155,0.25)' : 'rgba(224,115,111,0.22)');
+  grad.addColorStop(1, 'rgba(16,12,8,0.02)');
+  ctx.beginPath(); ctx.moveTo(pad, H - pad);
+  for (let i = 0; i < n; i++) ctx.lineTo(xOf(i), yOf(_liveP[i]));
+  ctx.lineTo(xOf(n - 1), H - pad); ctx.closePath();
+  ctx.fillStyle = grad; ctx.fill();
+
+  // line
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) { const x = xOf(i), y = yOf(_liveP[i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+  ctx.strokeStyle = stroke; ctx.lineWidth = 2;
+  ctx.shadowBlur = spike ? 12 : 6; ctx.shadowColor = stroke;
+  ctx.stroke(); ctx.shadowBlur = 0;
+
+  // leading dot
+  ctx.fillStyle = stroke;
+  ctx.beginPath(); ctx.arc(xOf(n - 1), yOf(_liveP[n - 1]), spike ? 5 : 3, 0, Math.PI * 2); ctx.fill();
+}
+
+// Reset the live chart window when a new coin's trading opens.
+function resetLive() { _liveP.length = 0; }
+
+// Price at which the user's holdings break even (cost basis per remaining supply).
+function priceForBasis() {
+  if (!wallet || wallet.bag <= 0) return 0;
+  // reserve that yields the user's cost basis on sell → break-even price
+  const remaining = SUPPLY_TOTAL - coin.sold;
+  const targetReserve = coin.reserve - wallet.costBasis;
+  return targetReserve > 0 ? targetReserve / remaining : coinPrice(coin) * 0.5;
 }
 
 function bagValue() { return wallet.bag > 0 ? curveQuoteSell(coin, wallet.bag) : 0; }
@@ -229,6 +300,7 @@ function tradeBuy() {
   wallet.bag += tokens;
   wallet.costBasis += spend;
   renderTrade('Aped in. Your buy pushed the price up — now the market decides.');
+  drawLive(true);
 }
 
 function tradeSell() {
@@ -242,6 +314,7 @@ function tradeSell() {
   const sign = pnl >= 0 ? '+' : '';
   recordToHistory('sell', `Sold $${coin.ticker} bag for ${fmtEth(got)} · P&L ${sign}${fmtEth(pnl)}`);
   renderTrade(`${pnl >= 0 ? '🟢 Secured the bag' : '🔴 Sold at a loss'}: ${sign}${fmtEth(pnl)} reserve. Sells drag the curve down.`);
+  drawLive(true);
 }
 
 let _tradeFlash = '';
