@@ -2,71 +2,160 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MemeForge — Meme Coin Creator Simulator (Fictional Toy)</title>
-  <meta name="description" content="Forge a meme into a coin, record a hype voice, and ride a live bonding curve before the drop window closes. A free, client-only fictional simulation — no real money or tokens. 18+.">
+  <title>MemeForge — Bonding Curve Launchpad Simulator (Fictional)</title>
+  <meta name="description" content="A fictional launchpad simulator: constant-product bonding curve on virtual reserves, King of the Hill, holder concentration and bubble maps, slippage and priority fees, and graduation with an LP burn. Client-only, no real money or tokens. 18+.">
   <link rel="canonical" href="https://hosuman08-netizen.github.io/memeforge-sim/">
-  <meta name="theme-color" content="#0b0b12">
+  <meta name="theme-color" content="#0a0806">
 
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="MemeForge">
-  <meta property="og:title" content="MemeForge — Meme Coin Creator Simulator">
-  <meta property="og:description" content="Forge a meme into a coin and ride its bonding curve before the drop window closes. A free, client-only fictional simulation — no real money or tokens. 18+.">
+  <meta property="og:title" content="MemeForge — Bonding Curve Launchpad Simulator">
+  <meta property="og:description" content="Launch a fictional coin on a constant-product bonding curve, fight for King of the Hill, and try to graduate. Under 2% make it. Client-only simulation — no real money. 18+.">
   <meta property="og:url" content="https://hosuman08-netizen.github.io/memeforge-sim/">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="MemeForge — Meme Coin Creator Simulator">
-  <meta name="twitter:description" content="Forge a meme into a coin and ride its bonding curve before the drop window closes. Free, client-only, fictional. No real money. 18+.">
+  <meta name="twitter:title" content="MemeForge — Bonding Curve Launchpad Simulator">
+  <meta name="twitter:description" content="Constant-product curve, King of the Hill, bubble maps, slippage & priority fees, LP-burn graduation. Fictional simulation. No real money. 18+.">
 
   <link rel="stylesheet" href="style.css">
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <header>
-    <h1>MemeForge <span class="tag">demo</span></h1>
-    <p class="tag">Forge a meme into a coin and ride its bonding curve before the drop window closes.</p>
-    <div id="fomo" class="fomo"></div>
-  </header>
-  <main>
-    <section>
-      <h2>Forge your coin</h2>
-      <div class="coin-form">
-        <input id="coinName" maxlength="20" placeholder="Coin name (e.g. Doge Reborn)" autocomplete="off">
-        <input id="coinTicker" maxlength="6" placeholder="TICKER" autocomplete="off" class="ticker-in">
-      </div>
-      <button onclick="recordMemeVoice()">Record Hype Voice</button>
-      <div id="voiceOut"></div>
-      <button onclick="launchMeme()">Launch on Bonding Curve</button>
-      <div id="launchOut"></div>
-    </section>
-    <section id="trade" hidden>
-      <h2>Trade your bag</h2>
-      <div id="tradePanel"></div>
-      <div class="trade-actions">
-        <button id="buyBtn" onclick="tradeBuy()">Ape in</button>
-        <button id="sellBtn" onclick="tradeSell()">Sell all</button>
-        <button onclick="shareMemeFate()">Share My Coin</button>
-      </div>
-    </section>
-    <section id="drops">
-      <h2>Meme Drop Windows</h2>
-      <div id="dropList"></div>
-    </section>
-    <section>
-      <h2>Hype meter &amp; history</h2>
-      <canvas id="meme-hype-canvas" width="320" height="120"></canvas>
-      <div id="creations"></div>
-    </section>
-  </main>
-  <nav class="cross">
-    <a href="https://hosuman08-netizen.github.io/legion-hub/">← More apps</a>
-    <a href="https://hosuman08-netizen.github.io/coinwallet-sim/">CoinVault</a>
-    <a href="https://hosuman08-netizen.github.io/tradedesk/">TradeDesk</a>
-  </nav>
-  <footer><small>FICTIONAL SIMULATION ONLY • Not real money, tokens, or investment advice • 18+</small></footer>
-  <script src="hype-eye.js"></script>
-  <script src="script.js"></script>
+
+<header class="topbar">
+  <button class="brand" id="brandBtn" title="Back to the board">
+    MemeForge <span class="simbadge">SIM</span>
+  </button>
+  <button class="wallet-chip" id="walletChip"></button>
+</header>
+
+<p class="simnote">Fictional simulation — no real money, tokens, wallets or blockchain. Every number here is generated in your browser. 18+</p>
+
+<main>
+
+  <!-- ══════════ BOARD ══════════ -->
+  <section id="view-board" class="view">
+    <div id="liveFeed" class="livefeed" aria-label="Live activity across coins"></div>
+    <div id="kingCard" class="king"></div>
+
+    <button class="primary wide" id="createBtn">Create a coin</button>
+
+    <nav class="tabs" id="boardTabs">
+      <button data-tab="new" class="on">New</button>
+      <button data-tab="climbing">Climbing</button>
+      <button data-tab="koth">Near KOTH</button>
+      <button data-tab="graduated">Graduated</button>
+    </nav>
+    <p class="tabhint" id="boardHint"></p>
+    <div id="boardList" class="board-list"></div>
+  </section>
+
+  <!-- ══════════ CREATE ══════════ -->
+  <section id="view-create" class="view" hidden>
+    <button class="back" data-nav="board">← Board</button>
+    <h2>Create a coin</h2>
+
+    <div class="field">
+      <label>Venue</label>
+      <div class="venue-pick" id="venuePick"></div>
+    </div>
+
+    <div class="field">
+      <label>Image <span class="req">required</span></label>
+      <div class="avatar-pick" id="avatarPick"></div>
+      <p class="hint">Static or animated image, max 5MB, 1500&times;500 recommended. This simulator uses a symbol instead of a real upload.</p>
+    </div>
+
+    <div class="field">
+      <label for="cName">Name <span class="req">required</span></label>
+      <input id="cName" maxlength="28" placeholder="e.g. Doge Reborn" autocomplete="off">
+    </div>
+
+    <div class="field">
+      <label for="cTicker">Ticker <span class="req">required</span></label>
+      <input id="cTicker" maxlength="8" placeholder="TICKER" autocomplete="off" class="ticker-in">
+      <p class="hint warn">Set once. Ticker and all metadata are immutable after launch — no edits, ever.</p>
+    </div>
+
+    <details class="optional">
+      <summary>Optional metadata <span class="hint">description &amp; socials — display only, no effect on the curve</span></summary>
+      <div class="field"><label for="cDesc">Description</label>
+        <textarea id="cDesc" maxlength="180" rows="2" placeholder="What is this coin about?"></textarea></div>
+      <div class="field"><label for="cTw">Twitter / X</label><input id="cTw" placeholder="https://x.com/…" autocomplete="off"></div>
+      <div class="field"><label for="cTg">Telegram</label><input id="cTg" placeholder="https://t.me/…" autocomplete="off"></div>
+      <div class="field"><label for="cWeb">Website</label><input id="cWeb" placeholder="https://…" autocomplete="off"></div>
+    </details>
+
+    <p class="hint" id="createFee"></p>
+    <button class="primary wide" id="submitCreate">Create coin</button>
+    <div id="createOut"></div>
+  </section>
+
+  <!-- ══════════ DEV BUY ══════════ -->
+  <section id="view-devbuy" class="view" hidden>
+    <h2>First buy</h2>
+    <div class="card offchain">
+      <div class="offchain-head"><span class="dot"></span> Off-chain — nobody can see this coin yet</div>
+      <p>Creating a coin costs nothing, but it stays invisible until someone makes the first buy. Devs almost always buy their own coin first — it seeds the curve and sets their entry.</p>
+    </div>
+    <div id="devbuyCoin"></div>
+    <div class="field">
+      <label for="devAmt">Dev buy (SOL)</label>
+      <input id="devAmt" type="number" min="0" step="0.1" value="1">
+      <div class="presets" id="devPresets"></div>
+      <p class="hint" id="devQuote"></p>
+    </div>
+    <button class="primary wide" id="devBuyGo">Buy &amp; reveal</button>
+    <button class="ghost wide" id="devSkip">Reveal with no dev buy</button>
+    <p class="hint warn">A large dev buy shows up as dev holding % on your token page. Traders read a high number as rug risk.</p>
+  </section>
+
+  <!-- ══════════ TOKEN PAGE ══════════ -->
+  <section id="view-token" class="view" hidden>
+    <button class="back" data-nav="board">← Board</button>
+    <div id="tokenHead"></div>
+
+    <canvas id="meme-hype-canvas" width="640" height="220"></canvas>
+
+    <div id="tokenStats" class="stats"></div>
+    <div id="gradBar"></div>
+
+    <div id="tradePanel"></div>
+
+    <nav class="tabs" id="tokenTabs">
+      <button data-tab="trades" class="on">Trades</button>
+      <button data-tab="holders">Holders</button>
+      <button data-tab="bubbles">Bubbles</button>
+      <button data-tab="comments">Comments</button>
+      <button data-tab="creator">Creator</button>
+    </nav>
+    <div id="tokenTabBody"></div>
+  </section>
+
+  <!-- ══════════ PORTFOLIO / LEDGER ══════════ -->
+  <section id="view-you" class="view" hidden>
+    <button class="back" data-nav="board">← Board</button>
+    <h2>Your positions</h2>
+    <div id="positionsOut"></div>
+    <h2>Activity</h2>
+    <div id="creations"></div>
+  </section>
+
+</main>
+
+<nav class="cross">
+  <a href="https://hosuman08-netizen.github.io/legion-hub/">← More apps</a>
+  <a href="https://hosuman08-netizen.github.io/coinwallet-sim/">CoinVault</a>
+  <a href="https://hosuman08-netizen.github.io/tradedesk/">TradeDesk</a>
+</nav>
+<footer><small>FICTIONAL SIMULATION ONLY • Not real money, tokens, or investment advice • Nothing here touches a blockchain • 18+</small></footer>
+
+<div id="toast" class="toast" hidden></div>
+
+<script src="hype-eye.js"></script>
+<script src="script.js"></script>
 <script>window.LEGION_APP='memeforge-sim';window.LEGION_ANALYTICS_URL='https://legion-analytics.hoyashi95.workers.dev';</script>
 <script src="legion-beacon.js"></script>
 </body>
