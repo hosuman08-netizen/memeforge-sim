@@ -118,6 +118,7 @@ function launchMeme() {
   coin = makeCoin(name, ticker);
   const fee = Math.floor(10 * (1 + (100 - hype) / 100));
   recordToHistory('launch', `$${ticker} "${name}" launched on curve • hype ${hype | 0} • launch fee ${fee}`);
+  if (window.legionTrack) legionTrack('activate');
   runLaunchCurve();
 }
 
@@ -521,6 +522,7 @@ function shareMemeFate() {
   }
 
   recordToHistory('share', `Shared $${coin.ticker} · ${mcap} · seeded curve`);
+  if (window.legionTrack) legionTrack('share');
 }
 
 function init() {
