@@ -149,6 +149,34 @@ button[onclick^="launchMeme"]:hover { background: linear-gradient(180deg, #e6c06
   box-shadow: 0 0 40px -12px rgba(201,163,74,0.35);
 }
 
+/* ---- Live trade panel ---- */
+.trade-card { border-color: rgba(201,163,74,0.28); }
+.trade-top { display: flex; align-items: baseline; gap: 8px; font-size: 1rem; }
+.trade-price { color: var(--accent); font-weight: 800; font-variant-numeric: tabular-nums; }
+.trade-tone {
+  margin-left: auto; font-size: 0.7rem; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--muted);
+}
+.trade-tone.up   { color: #7ad19b; }
+.trade-tone.down { color: #e0736f; }
+.trade-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;
+  margin: 12px 0 4px;
+}
+.trade-grid > div { display: flex; flex-direction: column; }
+.trade-grid .tl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.trade-grid .tv { font-size: 0.98rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.trade-grid .tv.up   { color: #7ad19b; }
+.trade-grid .tv.down { color: #e0736f; }
+.trade-note { margin-top: 8px; font-size: 0.78rem; color: var(--muted); min-height: 1.1em; }
+.trade-actions { display: flex; flex-wrap: wrap; gap: 0; }
+/* Ape in = the live protagonist action, wears the gold */
+button#buyBtn {
+  background: linear-gradient(180deg, #d8b25a, var(--accent));
+  color: #1a1206; border-color: transparent;
+}
+button#buyBtn:hover { background: linear-gradient(180deg, #e6c069, #d0a94f); }
+
 /* ---- Cross nav / footer ---- */
 .cross { margin-top: 28px; display: flex; gap: 16px; }
 .cross a { color: var(--muted); font-size: 0.82rem; text-decoration: none; border-bottom: 1px solid transparent; }

@@ -39,6 +39,13 @@ function recordMemeVoice() {
 let coin = null;          // { name, ticker, reserve, sold, holders, trades, launched, peakPrice }
 let curveTimer = null;
 
+// ---- The player's wallet + the live market that trades against them. ----
+// Fictional balances only. Starting cash = one meme's worth of buy pressure.
+const START_CASH = 2.5;                    // fictional reserve units to trade with
+let wallet = null;   // { cash, bag, costBasis }  (bag = tokens held, costBasis = reserve spent)
+let market = null;   // { timer, momentum, ticks, tone } — autonomous apes/whales/dumpers
+const BUY_SIZE = 0.35;                      // reserve spent per "Ape in"
+
 // Constant-product bonding curve (Uniswap-style x*y=k), the memecoin launch primitive.
 // price = reserve / (SUPPLY_TOTAL - tokensSold). Every buy pulls tokens out → price climbs.
 const SUPPLY_TOTAL = 1_000_000_000;      // 1B fixed supply (fictional)
@@ -74,6 +81,21 @@ function curveBuy(c, amt) {
   return tokensOut;
 }
 
+// Execute one SELL of `tokens` back into the curve. Returns reserve returned.
+// Selling puts tokens back into the pool → remaining supply grows → price falls.
+// This is the other half of a real bonding curve; buys alone can never crash.
+function curveSell(c, tokens) {
+  if (tokens <= 0) return 0;
+  const remaining = SUPPLY_TOTAL - c.sold;
+  const newRemaining = remaining + tokens;      // tokens flow back in
+  const newReserve = K / newRemaining;          // x*y=k: reserve the seller gets out
+  const reserveOut = Math.max(0, c.reserve - newReserve);
+  c.reserve = newReserve;
+  c.sold = Math.max(0, c.sold - tokens);
+  c.trades += 1;
+  return reserveOut;
+}
+
 function fmtEth(n)  { return n < 0.001 ? n.toExponential(2) : n.toFixed(4); }
 function fmtUsd(n)  {
   if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
@@ -90,6 +112,8 @@ function launchMeme() {
   if (!name) { alert('Name your coin first — speak it into being.'); nameEl.focus(); return; }
   if (!ticker) ticker = name.replace(/[^A-Za-z0-9]/g, '').slice(0, 5).toUpperCase() || 'MEME';
   if (curveTimer) { clearInterval(curveTimer); curveTimer = null; }
+  if (market && market.timer) { clearInterval(market.timer); market.timer = null; }
+  const tsec = document.getElementById('trade'); if (tsec) tsec.hidden = true;
 
   coin = makeCoin(name, ticker);
   const fee = Math.floor(10 * (1 + (100 - hype) / 100));
@@ -137,11 +161,115 @@ function runLaunchCurve() {
       out.innerHTML =
         `<div class="card curve-live done">` +
           `<div class="curve-row"><b>$${coin.ticker}</b> launched · <span class="curve-mult">${finalMult.toFixed(2)}×</span></div>` +
-          `<div class="drop-meta">final mcap ${fmtUsd(finalMcap * DISPLAY_RATE)} · ${coin.holders} holders · saved to history. Share it to seed more buys.</div>` +
+          `<div class="drop-meta">final mcap ${fmtUsd(finalMcap * DISPLAY_RATE)} · ${coin.holders} holders · now live. Trade your bag below.</div>` +
         `</div>`;
+      openTrading();
     }
   }, 100);
   hype = Math.max(20, hype - 8);
+}
+
+// ---- LIVE TRADING: the coin keeps moving; the user rides or gets rekt. ----
+// A running market of apes, whales and paper-hands buys and sells against the
+// same curve the user trades on. Buys lift price, sells crash it — real depth.
+function openTrading() {
+  wallet = { cash: START_CASH, bag: 0, costBasis: 0 };
+  market = { momentum: 0.6, ticks: 0, tone: 'warming up' };
+  const sec = document.getElementById('trade');
+  if (sec) sec.hidden = false;
+  renderTrade('Coin is live. Ape in before the next green candle — or wait for a dip.');
+  if (market.timer) clearInterval(market.timer);
+  market.timer = setInterval(marketTick, 600);
+}
+
+// One autonomous market beat: momentum drifts, then apes buy or paper-hands dump.
+function marketTick() {
+  if (!coin || !market) return;
+  market.ticks++;
+  // momentum is a mean-reverting random walk → pumps and dumps both happen
+  market.momentum += (Math.random() - 0.5) * 0.5;
+  market.momentum = Math.max(-1, Math.min(1, market.momentum * 0.9));
+  const m = market.momentum;
+
+  let event = '';
+  if (Math.random() < 0.10) {
+    // whale event — big one-sided move, the moment that makes or breaks a bag
+    if (m >= 0) { curveBuy(coin, 0.5 + Math.random() * 1.0); coin.holders++; event = '🐋 whale bought'; market.tone = 'pumping'; }
+    else        { curveSell(coin, (SUPPLY_TOTAL - coin.sold) * (0.06 + Math.random() * 0.10)); event = '🩸 whale dumped'; market.tone = 'dumping'; }
+  } else if (m > 0.1) {
+    curveBuy(coin, 0.02 + Math.random() * 0.10 * m);
+    if (Math.random() < 0.5) coin.holders++;
+    market.tone = 'climbing';
+  } else if (m < -0.1) {
+    curveSell(coin, (SUPPLY_TOTAL - coin.sold) * (0.01 + Math.random() * 0.05 * -m));
+    market.tone = 'paper-handing';
+  } else {
+    market.tone = 'chopping sideways';
+  }
+  renderTrade(event);
+  const p = coinPrice(coin);
+  drawCurve(coin.peakPrice > 0 ? coin.peakPrice / 6 : p, p, 0.5, event.includes('🐋') || event.includes('🩸'));
+}
+
+function bagValue() { return wallet.bag > 0 ? curveQuoteSell(coin, wallet.bag) : 0; }
+// What the user would get if they sold `tokens` right now (peek, no state change).
+function curveQuoteSell(c, tokens) {
+  const remaining = SUPPLY_TOTAL - c.sold;
+  const newReserve = K / (remaining + tokens);
+  return Math.max(0, c.reserve - newReserve);
+}
+
+function tradeBuy() {
+  if (!coin || !wallet) return;
+  if (wallet.cash < 0.01) { flashTrade('Out of cash. Sell your bag to recycle it.'); return; }
+  const spend = Math.min(BUY_SIZE, wallet.cash);
+  const tokens = curveBuy(coin, spend);
+  coin.holders = Math.max(coin.holders, 1);
+  wallet.cash -= spend;
+  wallet.bag += tokens;
+  wallet.costBasis += spend;
+  renderTrade('Aped in. Your buy pushed the price up — now the market decides.');
+}
+
+function tradeSell() {
+  if (!coin || !wallet) return;
+  if (wallet.bag <= 0) { flashTrade('Empty bag. Ape in first.'); return; }
+  const got = curveSell(coin, wallet.bag);
+  const pnl = got - wallet.costBasis;
+  wallet.cash += got;
+  const sold = wallet.bag;
+  wallet.bag = 0; wallet.costBasis = 0;
+  const sign = pnl >= 0 ? '+' : '';
+  recordToHistory('sell', `Sold $${coin.ticker} bag for ${fmtEth(got)} · P&L ${sign}${fmtEth(pnl)}`);
+  renderTrade(`${pnl >= 0 ? '🟢 Secured the bag' : '🔴 Sold at a loss'}: ${sign}${fmtEth(pnl)} reserve. Sells drag the curve down.`);
+}
+
+let _tradeFlash = '';
+function flashTrade(msg) { _tradeFlash = msg; renderTrade(); setTimeout(() => { _tradeFlash = ''; }, 1600); }
+
+function renderTrade(note) {
+  const el = document.getElementById('tradePanel');
+  if (!el || !coin || !wallet) return;
+  const price = coinPrice(coin);
+  const val = bagValue();
+  const equity = wallet.cash + val;
+  const pnlOpen = wallet.bag > 0 ? val - wallet.costBasis : 0;
+  const pnlSign = pnlOpen >= 0 ? '+' : '';
+  const toneClass = /pump|climb|whale bought/.test(market ? market.tone : '') ? 'up'
+                  : /dump|paper|🩸/.test(market ? market.tone : '') ? 'down' : '';
+  const line = note || _tradeFlash || '';
+  el.innerHTML =
+    `<div class="card trade-card">` +
+      `<div class="trade-top"><b>$${coin.ticker}</b> <span class="trade-price">${fmtEth(price)}</span> ` +
+        `<span class="trade-tone ${toneClass}">${market ? market.tone : ''}</span></div>` +
+      `<div class="trade-grid">` +
+        `<div><span class="tl">Cash</span><span class="tv">${fmtEth(wallet.cash)}</span></div>` +
+        `<div><span class="tl">Bag value</span><span class="tv">${fmtEth(val)}</span></div>` +
+        `<div><span class="tl">Open P&L</span><span class="tv ${pnlOpen >= 0 ? 'up' : 'down'}">${wallet.bag > 0 ? pnlSign + fmtEth(pnlOpen) : '—'}</span></div>` +
+        `<div><span class="tl">Equity</span><span class="tv">${fmtEth(equity)}</span></div>` +
+      `</div>` +
+      (line ? `<div class="trade-note">${line}</div>` : '') +
+    `</div>`;
 }
 
 // Real drop inventory — displayed slot counts are read from THIS state (code == display).
