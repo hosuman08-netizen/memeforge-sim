@@ -1450,6 +1450,7 @@ function doDevBuy(amount) {
   remember('launch', '$' + c.ticker + ' "' + c.name + '" revealed on ' + VENUES[c.venue].name +
     (amount > 0 ? ' with a ' + fmtSol(amount) + ' SOL dev buy' : ' with no dev buy'));
   if (window.legionTrack) window.legionTrack('activate');
+  try{bumpMfStreak('launch');renderMfLoop();}catch(e){}
   toast('$' + c.ticker + ' is live on the curve.', 'good');
   const id = c.id;
   draftCoin = null;
@@ -1571,6 +1572,12 @@ function remember(type, text) {
   try { list = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { list = []; }
   list.unshift({ ts: Date.now(), type: type, text: text });
   try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) {}
+  try {
+    if (type === 'sell' || type === 'buy' || type === 'launch') {
+      bumpMfStreak(type === 'launch' ? 'launch' : 'trade');
+      renderMfLoop();
+    }
+  } catch (e) {}
   renderLedger();
 }
 
@@ -1602,8 +1609,62 @@ function loadWallet() {
 
 /* ══════════════════════════ 15. MASTER RENDER + EVENTS ══════════════════════════ */
 
+
+/* ── 5H retention loop (local sim) ───────────────────────── */
+function mfDayKey(off){const d=new Date();d.setDate(d.getDate()+(off||0));return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function bumpMfStreak(kind){
+  try{
+    let st=JSON.parse(localStorage.getItem('mf_streak')||'{}');
+    const t0=mfDayKey(0);
+    if(st.last!==t0){
+      const y=mfDayKey(-1), y2=mfDayKey(-2);
+      if(st.last && st.last!==y && st.last===y2 && (st.count||0)>=3){
+        const ready=!st.shieldLast||((new Date(t0)-new Date(st.shieldLast))/86400000)>=7;
+        if(ready){st.shieldLast=t0;st.last=y;try{legionTrack('streak_freeze',{count:st.count})}catch(e){}}
+      }
+      st.count=(st.last===y)?(st.count||0)+1:1; st.last=t0;
+      localStorage.setItem('mf_streak',JSON.stringify(st));
+      try{legionTrack('streak',{count:st.count,kind:kind||'act'})}catch(e){}
+    }
+    const dk='mf_day_'+t0;
+    let day=JSON.parse(localStorage.getItem(dk)||'{"launches":0,"trades":0}');
+    if(kind==='launch') day.launches=(day.launches||0)+1;
+    if(kind==='trade') day.trades=(day.trades||0)+1;
+    localStorage.setItem(dk,JSON.stringify(day));
+    return st;
+  }catch(e){return {count:0};}
+}
+function renderMfLoop(){
+  try{
+    let el=document.getElementById('mfLoop');
+    if(!el){
+      el=document.createElement('div'); el.id='mfLoop';
+      el.style.cssText='margin:8px 12px;padding:10px;border:1px solid #2a2438;border-radius:12px;font-size:12px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#12101a';
+      const host=document.querySelector('header')||document.querySelector('.top')||document.body.firstElementChild||document.body;
+      host.insertAdjacentElement('afterend', el);
+    }
+    const st=JSON.parse(localStorage.getItem('mf_streak')||'{}');
+    const day=JSON.parse(localStorage.getItem('mf_day_'+mfDayKey(0))||'{}');
+    const end=new Date(); end.setHours(24,0,0,0);
+    const ms=Math.max(0,end-Date.now());
+    const clock=Math.floor(ms/3600000)+'h '+Math.floor((ms%3600000)/60000)+'m';
+    const mine=(world&&world.coins)?world.coins.filter(function(c){return c.isPlayer;}).length:0;
+    el.innerHTML='<span>🔥 '+(st.count||0)+'d</span><span>today launch '+(day.launches||0)+'</span><span>trade '+(day.trades||0)+'</span><span>my coins '+mine+'</span><span>reset '+clock+'</span>'
+      +'<button type="button" id="mfShare" style="margin-left:auto;padding:6px 10px;border:0;border-radius:8px;background:#1c1826;color:#ece8f1">share board</button>'
+      +'<span style="opacity:.65;font-size:11px">fictional sim · no real tokens</span>';
+    const b=document.getElementById('mfShare');
+    if(b) b.onclick=function(){
+      const text='MemeForge sim · 🔥'+(st.count||0)+'d · launches '+(day.launches||0)+' · https://hosuman08-netizen.github.io/memeforge-sim/\nFICTIONAL ONLY';
+      if(navigator.share) navigator.share({text}).catch(function(){});
+      else if(navigator.clipboard) navigator.clipboard.writeText(text);
+      try{legionTrack('share_peak',{})}catch(e){}
+    };
+  }catch(e){}
+}
+
 function render() {
   renderWalletChip();
+  try{renderMfLoop();}catch(e){}
   if (ui.view === 'board') renderBoard();
   else if (ui.view === 'token') renderToken();
   else if (ui.view === 'you') { renderPositions(); renderLedger(); }
