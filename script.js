@@ -1800,3 +1800,5 @@ function init() {
 window.onload = init;
 
 /* LEGION_WAVE_10_wave_stamp */ /* ship wave 10 2026-07-21T07:41:56 */
+
+/* LEGION_WAVE_100_wave_stamp */ /* ship wave 100 2026-07-21T07:44:36 */
