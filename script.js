@@ -360,9 +360,11 @@ function checkGraduation(c) {
   pushFeed(c, 'grad', c.poolSol, c.poolTokens);
   if (c.isPlayer) {
     remember('graduate', '$' + c.ticker + ' GRADUATED — ' + fmtSol(c.poolSol) + ' SOL into ' + v.pool + ', LP burned');
-    toast('$' + c.ticker + ' graduated. LP burned — liquidity is locked forever.', 'good');
     pulseSurprise(1);
   }
+  // The migration is the rarest moment on the curve — under 2% ever get here.
+  // Celebrate it. Seeding replays history silently; only live graduations fire.
+  if (!world.seeding) celebrateGraduation(c);
 }
 
 /* ══════════ Player order flow: presets, slippage, priority fee ══════════ */
@@ -740,21 +742,116 @@ function renderLiveFeed() {
   ui._feedSeen = newest;
 }
 
+/* ══════════════════════════ THE HILL — KOTH competition viz ══════════════════════════
+   King of the Hill is a race, not a badge. The throne is held on momentum, and
+   momentum is a live number every coin is fighting to raise. This panel draws
+   that fight: who holds the crown, who is closing in, how far back they are, and
+   what is fuelling each climb (holder growth · social velocity · volume). Every
+   value is read straight off the sim — the gaps are real, the fuel mix is real. */
+
+/* Split a coin's momentum into its three real contributions (same weights the
+   crown is actually scored on). Returns fractions that sum to ~1. */
+function momentumFuel(c) {
+  const h = c.hVel * 3.0, s = c.cVel * 4.5, v = c.vVel * 2.2;
+  const tot = h + s + v || 1;
+  return { h: h / tot, s: s / tot, v: v / tot, raw: h + s + v };
+}
+
+function renderKingRace() {
+  const kc = document.getElementById('kingCard');
+  if (!kc) return;
+
+  const active = world.coins.filter(function (c) { return c.revealed && !c.graduated; });
+  const king = world.byId[world.kingId];
+
+  // lead-change flash: remember who wore it last paint
+  const changed = king && ui._lastKingId && ui._lastKingId !== king.id;
+  ui._lastKingId = king ? king.id : ui._lastKingId;
+
+  // No throne yet — show who is climbing toward the $30K contention floor so the
+  // panel is a race even before anyone qualifies.
+  if (!king) {
+    const climbers = active.slice()
+      .sort(function (a, b) { return mcapUsd(b) - mcapUsd(a); }).slice(0, 3);
+    kc.className = 'hill vacant';
+    kc.innerHTML =
+      '<div class="hill-top"><span class="hill-crown">👑</span><span class="hill-title">The Hill is open</span>' +
+        '<span class="hill-sub">no coin past the $30K floor</span></div>' +
+      (climbers.length
+        ? '<div class="hill-race">' + climbers.map(function (c) {
+            const pctToFloor = clamp(mcapUsd(c) / KOTH_MCAP_USD * 100, 0, 100);
+            return '<button class="race-row" data-coin="' + c.id + '">' +
+              '<span class="rr-av" style="--h:' + c.hue + '">' + c.avatar + '</span>' +
+              '<span class="rr-id"><b>$' + esc(c.ticker) + '</b><em>' + fmtUsd(mcapUsd(c)) + '</em></span>' +
+              '<span class="rr-bar"><i class="to-floor" style="width:' + pctToFloor.toFixed(0) + '%"></i></span>' +
+              '<span class="rr-gap">' + pctToFloor.toFixed(0) + '%<em>to floor</em></span>' +
+            '</button>';
+          }).join('') + '</div>'
+        : '<div class="hill-empty">Give it a moment — momentum decides who takes the slot.</div>');
+    return;
+  }
+
+  const kingMom = Math.max(king.momentum, 1e-6);
+  const kf = momentumFuel(king);
+  const heldMs = Date.now() - (world.crownedAt || Date.now());
+  const heldTxt = heldMs < 60000 ? Math.max(1, Math.round(heldMs / 1000)) + 's'
+    : Math.round(heldMs / 60000) + 'm';
+
+  const contenders = active
+    .filter(function (c) { return c.id !== king.id; })
+    .sort(function (a, b) { return b.momentum - a.momentum; })
+    .slice(0, 3);
+
+  // the top contender's gap decides the threat level of the throne
+  const chaser = contenders[0];
+  const chaserGap = chaser ? (kingMom - chaser.momentum) / kingMom : 1;
+  const contested = chaser && chaserGap < 0.12;   // within 12% = throne under threat
+
+  const fuelBar =
+    '<span class="fuel" title="What is fuelling the crown: holder growth · social · volume">' +
+      '<i class="f-h" style="width:' + (kf.h * 100).toFixed(0) + '%"></i>' +
+      '<i class="f-s" style="width:' + (kf.s * 100).toFixed(0) + '%"></i>' +
+      '<i class="f-v" style="width:' + (kf.v * 100).toFixed(0) + '%"></i>' +
+    '</span>';
+
+  const race = contenders.map(function (c) {
+    const rel = clamp(c.momentum / kingMom, 0, 1);        // bar vs the throne
+    const gap = clamp((kingMom - c.momentum) / kingMom * 100, 0, 100);
+    const near = gap < 12;                                 // real striking distance
+    return '<button class="race-row' + (near ? ' near' : '') + (c.isPlayer ? ' mine' : '') + '" data-coin="' + c.id + '">' +
+      '<span class="rr-av" style="--h:' + c.hue + '">' + c.avatar + '</span>' +
+      '<span class="rr-id"><b>$' + esc(c.ticker) + (c.isPlayer ? ' <em class="rr-you">you</em>' : '') + '</b>' +
+        '<em>' + fmtUsd(mcapUsd(c)) + '</em></span>' +
+      '<span class="rr-bar"><i style="width:' + (rel * 100).toFixed(0) + '%"></i></span>' +
+      '<span class="rr-gap' + (near ? ' hot' : '') + '">' + (near ? '⚡ ' : '') + '−' + gap.toFixed(0) + '%' +
+        '<em>' + (near ? 'striking' : 'behind') + '</em></span>' +
+    '</button>';
+  }).join('');
+
+  kc.className = 'hill' + (contested ? ' contested' : '') + (changed ? ' flash' : '');
+  kc.innerHTML =
+    '<div class="hill-top">' +
+      '<span class="hill-crown">👑</span><span class="hill-title">King of the Hill</span>' +
+      '<span class="hill-held" title="How long this coin has held the throne">held ' + heldTxt + '</span>' +
+    '</div>' +
+    '<button class="throne" data-coin="' + king.id + '">' +
+      '<span class="th-av" style="--h:' + king.hue + '">' + king.avatar + '</span>' +
+      '<span class="th-id"><b>$' + esc(king.ticker) + (king.isPlayer ? ' <em class="rr-you">you</em>' : '') + '</b>' +
+        '<em>' + esc(king.name) + '</em></span>' +
+      '<span class="th-stats"><b>' + fmtUsd(mcapUsd(king)) + '</b>' +
+        '<em>' + king.holderCount + ' holders · ' + (progress(king) * 100).toFixed(0) + '% to grad</em></span>' +
+    '</button>' +
+    '<div class="hill-fuel"><span class="hf-lbl">fuelling the crown</span>' + fuelBar +
+      '<span class="hf-key"><i class="f-h"></i>holders <i class="f-s"></i>social <i class="f-v"></i>volume</span></div>' +
+    (contested
+      ? '<div class="hill-alert">⚡ Throne contested — $' + esc(chaser.ticker) + ' is ' + (chaserGap * 100).toFixed(0) + '% off the crown</div>'
+      : '') +
+    (race ? '<div class="hill-race"><div class="hr-lbl">closing in</div>' + race + '</div>' : '');
+}
+
 function renderBoard() {
   renderLiveFeed();
-  const king = world.byId[world.kingId];
-  const kc = document.getElementById('kingCard');
-  if (kc) {
-    kc.innerHTML = king
-      ? '<button class="king-inner" data-coin="' + king.id + '">' +
-          '<div class="king-label">👑 King of the Hill</div>' +
-          '<div class="king-main"><span class="king-av" style="--h:' + king.hue + '">' + king.avatar + '</span>' +
-            '<span><b>$' + esc(king.ticker) + '</b><em>' + esc(king.name) + '</em></span></div>' +
-          '<div class="king-stats"><span>' + fmtUsd(mcapUsd(king)) + '</span><span>' + king.holderCount + ' holders</span>' +
-            '<span>' + (progress(king) * 100).toFixed(0) + '% to graduation</span></div>' +
-        '</button>'
-      : '<div class="king-empty">No king yet — nothing has cleared the $30K mcap floor. Momentum decides who takes the slot.</div>';
-  }
+  renderKingRace();
   const hint = document.getElementById('boardHint');
   if (hint) hint.textContent = BOARD_HINTS[ui.boardTab] || '';
   const list = document.getElementById('boardList');
@@ -1124,6 +1221,137 @@ function pulseSurprise(intensity) {
   return Math.max(0.15, typeof _eye.lastSurprise === 'number' ? _eye.lastSurprise : 0.6);
 }
 
+/* ══════════════════════════ GRADUATION — the migration moment ══════════════════════════
+   Under 2% of coins clear the curve. When one does, the LP is burned and the
+   liquidity is locked forever — the single most consequential event a coin can
+   reach. It deserves more than a toast. Your own coin gets the full stage; a
+   coin you don't own slides a banner across the top so the rarity is still felt.
+   Pure presentation — the numbers shown are the same ones the sim just recorded. */
+
+function ensureGradLayer() {
+  let el = document.getElementById('gradLayer');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'gradLayer';
+    // tapping the backdrop (outside the card) dismisses the full stage
+    el.addEventListener('click', function (ev) {
+      if (ev.target === el) closeGradCelebration();
+    });
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+/* Physics confetti — gold/green/violet, gravity + drift, self-clearing.
+   Visual only: particle spread is decorative, it claims no metric. */
+function confettiBurst(canvas, seedHue) {
+  const ctx = canvas.getContext && canvas.getContext('2d');
+  if (!ctx) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = canvas.clientWidth || window.innerWidth;
+  const H = canvas.clientHeight || window.innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  ctx.scale(dpr, dpr);
+  const COLORS = ['#e8c76a', '#c9a34a', '#7ad19b', '#a98bff', '#ffffff'];
+  const N = 150;
+  const ps = [];
+  for (let i = 0; i < N; i++) {
+    const ang = -Math.PI / 2 + (Math.random() - 0.5) * 2.2;
+    const spd = 6 + Math.random() * 11;
+    ps.push({
+      x: W / 2, y: H * 0.42,
+      vx: Math.cos(ang) * spd * (0.6 + Math.random()),
+      vy: Math.sin(ang) * spd - Math.random() * 4,
+      g: 0.22 + Math.random() * 0.12,
+      s: 4 + Math.random() * 6,
+      rot: Math.random() * 6.28, vr: (Math.random() - 0.5) * 0.4,
+      c: COLORS[Math.floor(Math.random() * COLORS.length)],
+      life: 1
+    });
+  }
+  const t0 = performance.now();
+  function frame(t) {
+    const dt = Math.min(2, (t - (frame._p || t)) / 16.7); frame._p = t;
+    ctx.clearRect(0, 0, W, H);
+    let alive = 0;
+    for (let i = 0; i < ps.length; i++) {
+      const p = ps[i];
+      if (p.life <= 0) continue;
+      p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt;
+      p.vx *= 0.99;
+      if (t - t0 > 1400) p.life -= 0.02 * dt;
+      if (p.y > H + 40) p.life = 0;
+      if (p.life <= 0) continue;
+      alive++;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s * 0.6);
+      ctx.restore();
+    }
+    if (alive > 0 && t - t0 < 4200) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, W, H);
+  }
+  requestAnimationFrame(frame);
+}
+
+let _gradTimer = null;
+function closeGradCelebration() {
+  const el = document.getElementById('gradLayer');
+  if (el) { el.classList.remove('show'); el.innerHTML = ''; }
+  if (_gradTimer) { clearTimeout(_gradTimer); _gradTimer = null; }
+}
+
+function celebrateGraduation(c) {
+  const v = VENUES[c.venue];
+  const mine = !!c.isPlayer;
+
+  if (!mine) {
+    // A coin you don't own: a non-blocking banner slides across the top.
+    const el = ensureGradLayer();
+    el.className = 'grad-banner show';
+    el.innerHTML =
+      '<button class="gb-inner" data-coin="' + c.id + '">' +
+        '<span class="gb-flame">🎓</span>' +
+        '<span class="gb-tx"><b>$' + esc(c.ticker) + ' graduated</b>' +
+          '<em>' + fmtSol(c.poolSol) + ' SOL migrated to ' + v.pool + ' · LP burned 🔥</em></span>' +
+        '<span class="gb-rare">rare</span>' +
+      '</button>';
+    if (_gradTimer) clearTimeout(_gradTimer);
+    _gradTimer = setTimeout(closeGradCelebration, 5200);
+    return;
+  }
+
+  // Your coin made it — full stage.
+  toast('$' + c.ticker + ' graduated. LP burned — liquidity is locked forever.', 'good');
+  const el = ensureGradLayer();
+  el.className = 'grad-stage show';
+  el.innerHTML =
+    '<canvas class="grad-confetti"></canvas>' +
+    '<div class="gs-card" role="dialog" aria-label="Coin graduated">' +
+      '<div class="gs-rare">◆ UNDER 2% OF COINS EVER GET HERE ◆</div>' +
+      '<div class="gs-av" style="--h:' + c.hue + '">' + c.avatar + '</div>' +
+      '<div class="gs-tk">$' + esc(c.ticker) + '</div>' +
+      '<div class="gs-head">GRADUATED</div>' +
+      '<div class="gs-rows">' +
+        '<div class="gs-r"><span>Migrated to</span><b>' + v.pool + '</b></div>' +
+        '<div class="gs-r"><span>Seeded pool</span><b>' + fmtSol(c.poolSol) + ' SOL</b></div>' +
+        '<div class="gs-r"><span>Market cap</span><b>' + fmtUsd(c.gradMcap || mcapUsd(c)) + '</b></div>' +
+        (c.burned ? '<div class="gs-r"><span>Burned</span><b>' + fmtTok(c.burned) + '</b></div>' : '') +
+      '</div>' +
+      '<div class="gs-burn">🔥 LP tokens burned — liquidity can never be pulled</div>' +
+      '<div class="gs-note">Simulated migration — no real pool, tokens or blockchain.</div>' +
+      '<button class="gs-close" id="gradClose">Continue</button>' +
+    '</div>';
+  const cv = el.querySelector('.grad-confetti');
+  if (cv) confettiBurst(cv, c.hue);
+  pulseSurprise(1);
+  if (navigator.vibrate) { try { navigator.vibrate([30, 40, 60]); } catch (e) {} }
+  if (_gradTimer) clearTimeout(_gradTimer);
+  _gradTimer = setTimeout(closeGradCelebration, 6500);
+}
+
 /* ══════════════════════════ 12. CREATE FLOW ══════════════════════════ */
 
 let draftCoin = null;
@@ -1391,7 +1619,8 @@ function wire() {
     if (!t) return;
     const d = t.dataset || {};
 
-    if (d.coin) { go('token', d.coin); return; }
+    if (t.id === 'gradClose') { closeGradCelebration(); return; }
+    if (d.coin) { closeGradCelebration(); go('token', d.coin); return; }
     if (d.nav)  { go(d.nav); return; }
 
     if (d.tab) {
@@ -1457,6 +1686,7 @@ function ageCoin(c, ticks) {
 }
 
 function seedBoard() {
+  world.seeding = true;
   const g = function (c) { return VENUES[c.venue].gradSol; };
 
   // two coins that already made it — the Graduated board is never empty
@@ -1489,6 +1719,7 @@ function seedBoard() {
     eligible[0].everKoth = true;
     eligible[0].kothAt = Date.now();
   }
+  world.seeding = false;
 }
 
 function init() {
