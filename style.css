@@ -346,6 +346,19 @@ button:disabled { opacity: .4; cursor: default; }
 .tk-why {
   font-size: .68rem; color: var(--accent); margin-top: 2px;
 }
+.cvel-chip {
+  display: inline-block; font-size: .58rem; letter-spacing: .02em;
+  border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; margin-left: 4px;
+  vertical-align: middle;
+}
+.cvel-chip.cv-hot { color: var(--accent); border-color: rgba(201,163,74,.45); }
+.cvel-chip.cv-mid { color: var(--muted); }
+.cvel-chip.cv-dim { color: var(--faint); }
+.cvel-bar {
+  font-size: .7rem; color: var(--muted); margin: 0 0 8px;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+}
+.cvel-bar b { color: var(--accent); }
 .row-num { display: flex; flex-direction: column; align-items: flex-end; }
 .row-mc { font-size: .84rem; font-weight: 700; }
 .row-ch { font-size: .68rem; }

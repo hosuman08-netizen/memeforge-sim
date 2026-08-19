@@ -752,6 +752,13 @@ function rugChipHtml(c, compact) {
   '</div>';
 }
 
+/* WAVE49: comment velocity chip. sim cVel only. no invented cap · no live X. */
+function cVelChip(c) {
+  var v = +(c && c.cVel) || 0;
+  var lvl = v >= 1.5 ? 'hot' : v >= 0.5 ? 'mid' : 'dim';
+  return '<span class="cvel-chip cv-' + lvl + '" title="sim comment velocity · not live X">c ' + v.toFixed(1) + '</span>';
+}
+
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
 function whyNow(c) {
   if (!c) return 'on curve';
@@ -784,7 +791,7 @@ function coinRow(c) {
     '<span class="row-mid">' +
       '<span class="row-t">$' + esc(c.ticker) + (c.isPlayer ? '<em class="mine-tag">yours</em>' : '') + (isKing ? ' 👑' : '') + '</span>' +
       '<span class="row-n">' + esc(c.name) + rugChipHtml(c, true) + '</span>' +
-      '<span class="row-why">' + esc(whyNow(c)) + '</span>' +
+      '<span class="row-why">' + esc(whyNow(c)) + ' ' + cVelChip(c) + '</span>' +
     '</span>' +
     '<span class="row-num">' +
       '<span class="row-mc">' + fmtUsd(mcapUsd(c)) + '</span>' +
@@ -962,6 +969,7 @@ function renderTokenHead(c) {
           (c.graduated ? ' <span class="grad-tag">GRADUATED</span>' : '') + '</div>' +
         '<div class="tk-n">' + esc(c.name) + '</div>' +
         '<div class="tk-why" id="whyNow">' + esc(whyNow(c)) + '</div>' +
+        '<div id="cVelChip">' + cVelChip(c) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
@@ -1134,6 +1142,7 @@ function renderTabBody(c) {
 
   if (ui.tokenTab === 'comments') {
     el.innerHTML =
+      '<div id="cVelBar" class="cvel-bar">sim comment velocity <b>' + ((c.cVel || 0).toFixed(1)) + '</b> · not live X · no cap invented</div>' +
       '<div class="cm-box"><input id="cmIn" maxlength="90" placeholder="Say something…" autocomplete="off">' +
         '<button class="ghost" id="cmGo">Post</button></div>' +
       '<p class="hint">Comment and reaction velocity is a real ranking input — it feeds the momentum score that decides board placement, alongside holder growth and volume.</p>' +
