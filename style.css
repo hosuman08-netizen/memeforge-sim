@@ -393,6 +393,16 @@ button:disabled { opacity: .4; cursor: default; }
 .mom-chip.mm-hot { color: #f0cf8a; border-color: rgba(240,207,138,.45); }
 .mom-chip.mm-mid { color: var(--muted); }
 .mom-chip.mm-dim { color: var(--faint); }
+.mom-bar {
+  font-size: .7rem; color: var(--muted); margin: 6px 0 0;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+}
+.mom-bar b { color: #f0cf8a; }
+.mom-track {
+  display: block; height: 4px; margin-top: 6px;
+  background: rgba(255,255,255,.05); border-radius: 2px; overflow: hidden;
+}
+.mom-track i { display: block; height: 100%; background: rgba(240,207,138,.55); }
 .row-num { display: flex; flex-direction: column; align-items: flex-end; }
 .row-mc { font-size: .84rem; font-weight: 700; }
 .row-ch { font-size: .68rem; }

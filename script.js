@@ -777,6 +777,14 @@ function momChip(c) {
   var lvl = v >= 6 ? 'hot' : v >= 2 ? 'mid' : 'dim';
   return '<span class="mom-chip mm-' + lvl + '" title="sim momentum · not live cap">m ' + v.toFixed(1) + '</span>';
 }
+/* WAVE72: momentum bar. sim computeMomentum only. no invented cap · no live X · no live pay. */
+function momBar(c) {
+  var v = +(c && c.momentum);
+  if (!isFinite(v)) v = computeMomentum(c || {});
+  var pct = Math.max(0, Math.min(100, Math.round((v / 12) * 100)));
+  return '<div id="momBar" class="mom-bar">sim momentum <b>' + v.toFixed(1) + '</b> · not live cap · no cap invented'
+    + '<span class="mom-track"><i style="width:' + pct + '%"></i></span></div>';
+}
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
 function whyNow(c) {
@@ -993,6 +1001,7 @@ function renderTokenHead(c) {
         '<div id="hVelChip">' + hVelChip(c) + '</div>' +
         '<div id="vVelChip">' + vVelChip(c) + '</div>' +
         '<div id="momChip">' + momChip(c) + '</div>' +
+        momBar(c) +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
