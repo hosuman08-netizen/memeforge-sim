@@ -926,6 +926,7 @@ function momPeakBackAtChip(c) {
 /* WAVE174: 끈 뒤 바 포커스. sim only. no invented cap. */
 /* WAVE180: 포커스 링. sim only. no invented cap. */
 /* WAVE186: 링 중 재탭=링 재시작. sim only. no invented cap. */
+/* WAVE187: 링 탭=링 끄기. sim only. no invented cap. */
 function momPeakBackAgoLvl(sec, atPeak) {
   if (!atPeak) return 'dim';
   if (sec < 60) return 'hot';
@@ -975,6 +976,20 @@ function armMomBarFocusRing() {
   }, momBarFocusRingMs());
   return true;
 }
+function killMomBarFocusRing() {
+  var el = typeof document !== 'undefined' ? document.getElementById(momPeakBackAgoJumpId()) : null;
+  if (!el) return false;
+  if (el._ringT) try { clearTimeout(el._ringT); } catch (e0) {}
+  el._ringT = 0;
+  if (el.classList) el.classList.remove('mom-focus-ring');
+  if (el.setAttribute) {
+    el.setAttribute('data-focus-ring', '0');
+    el.setAttribute('data-re-ring', '0');
+    el.setAttribute('data-ring-off', '1');
+    el.setAttribute('data-ring-tap', '1');
+  }
+  return true;
+}
 function focusMomBar() {
   var el = typeof document !== 'undefined' ? document.getElementById(momPeakBackAgoJumpId()) : null;
   if (!el) return false;
@@ -1020,7 +1035,7 @@ function jumpMomPeakBackAgo() {
     return id;
   }
   if (momBarFocusRingOn(el)) {
-    armMomBarFocusRing();
+    killMomBarFocusRing();
     return id;
   }
   try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
