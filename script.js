@@ -924,6 +924,7 @@ function momPeakBackAtChip(c) {
 /* WAVE166: 점프 후 모멘텀바 플래시. sim only. no invented cap. */
 /* WAVE170: 플래시 중 재탭=바플래시즉끄기. sim only. no invented cap. */
 /* WAVE174: 끈 뒤 바 포커스. sim only. no invented cap. */
+/* WAVE180: 포커스 링. sim only. no invented cap. */
 function momPeakBackAgoLvl(sec, atPeak) {
   if (!atPeak) return 'dim';
   if (sec < 60) return 'hot';
@@ -932,6 +933,7 @@ function momPeakBackAgoLvl(sec, atPeak) {
 }
 function momPeakBackAgoJumpId() { return 'momBar'; }
 function momBarFlashMs() { return 700; }
+function momBarFocusRingMs() { return 400; }
 function momBarFlashOn(el) {
   el = el || (typeof document !== 'undefined' ? document.getElementById(momPeakBackAgoJumpId()) : null);
   if (!el) return false;
@@ -940,12 +942,30 @@ function momBarFlashOn(el) {
   if (el.getAttribute && el.getAttribute('data-flash') === '1') return true;
   return false;
 }
+function armMomBarFocusRing() {
+  var el = typeof document !== 'undefined' ? document.getElementById(momPeakBackAgoJumpId()) : null;
+  if (!el) return false;
+  if (el.classList) {
+    el.classList.remove('mom-focus-ring');
+    void el.offsetWidth;
+    el.classList.add('mom-focus-ring');
+  }
+  if (el.setAttribute) el.setAttribute('data-focus-ring', '1');
+  if (el._ringT) try { clearTimeout(el._ringT); } catch (e0) {}
+  el._ringT = setTimeout(function () {
+    if (el.classList) el.classList.remove('mom-focus-ring');
+    if (el.setAttribute) el.setAttribute('data-focus-ring', '0');
+    el._ringT = 0;
+  }, momBarFocusRingMs());
+  return true;
+}
 function focusMomBar() {
   var el = typeof document !== 'undefined' ? document.getElementById(momPeakBackAgoJumpId()) : null;
   if (!el) return false;
   try { if (!el.hasAttribute || !el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1'); } catch (e0) {}
   try { if (el.focus) el.focus(); } catch (e1) {}
   if (el.setAttribute) el.setAttribute('data-focus-after-kill', '1');
+  armMomBarFocusRing();
   return true;
 }
 function killMomBarFlash() {
