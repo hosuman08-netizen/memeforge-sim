@@ -108,7 +108,7 @@ const ui = {
   openId: null,
   boardTab: 'new',
   tokenTab: 'trades',
-  draft: { avatar: '🐕', venue: 'pumpforge' },
+  draft: { avatar: '🐕', venue: 'pumpforge', shares: [{ w: 'you', pct: 100 }] },
   exec: { amount: 0.5, slippage: 15, priority: 0.001 }
 };
 
@@ -215,6 +215,7 @@ function mkCoin(opts) {
 
     volSol: 0, buys: 0, sells: 0,
     creatorFees: 0,
+    feeShare: Array.isArray(opts.feeShare) && opts.feeShare.length ? opts.feeShare : [{ w: opts.isPlayer ? 'you' : 'dev', pct: 100 }],
 
     hVel: 0, cVel: 0, vVel: 0, momentum: 0,
     kothAt: 0, everKoth: false,
@@ -883,6 +884,7 @@ function renderTokenHead(c) {
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
+    (c.origin === 'cast' ? '<p class="cast-origin">Minted from a sim post — nothing was published. “' + esc((c.castBody || '').slice(0, 80)) + '”</p>' : '') +
     '<div class="tk-meta"><span>' + v.name + '</span>' +
       (c.isPlayer ? '<span class="tk-you">your coin</span>' : '') +
       '<span>created ' + ago(c.createdAt) + ' ago</span>' +
@@ -1074,6 +1076,9 @@ function renderTabBody(c) {
       '<p class="hint">The fee is regressive on purpose: a creator earns the most while the coin is small, and the cut tapers as it grows. Revenue can be split across up to 10 wallets, ownership can be transferred, and a community takeover can reassign the share after launch.</p>' +
       '<div class="fee-earned"><span class="tl">Fees accrued on this coin</span>' +
         '<span class="tv">' + fmtSol(c.creatorFees) + ' SOL <em>' + fmtUsd(c.creatorFees * SIM.SOL_USD) + '</em></span></div>' +
+      '<p class="hint">Fee share: ' + (c.feeShare || [{ w: c.isPlayer ? 'you' : 'dev', pct: 100 }]).map(function (s) {
+        return esc(s.w) + ' ' + s.pct + '%';
+      }).join(' · ') + ' · sim forever-fee, no chain.</p>' +
       (c.isPlayer ? '<button class="ghost" id="claimFees">Claim to wallet</button>'
                   : '<p class="hint">You are not the creator of this coin — these fees go to ' + shortWallet(c.dev.wallet) + '.</p>') +
     '</div>';
@@ -1385,6 +1390,70 @@ function renderCreate() {
 
   const btn = document.getElementById('submitCreate');
   if (btn) btn.textContent = v.launchFee ? 'Create coin — ' + v.launchFee + ' SOL' : 'Create coin — free';
+  renderFeeShare();
+}
+
+function normalizeShares(rows) {
+  const list = (rows || []).filter(function (s) { return s && s.w; }).slice(0, 5);
+  if (!list.length) return [{ w: 'you', pct: 100 }];
+  let sum = 0;
+  list.forEach(function (s) { s.pct = Math.max(0, Math.min(100, +s.pct || 0)); sum += s.pct; });
+  if (sum <= 0) { list[0].pct = 100; return list; }
+  if (sum !== 100) {
+    const k = 100 / sum;
+    list.forEach(function (s) { s.pct = Math.round(s.pct * k); });
+    let fix = 100 - list.reduce(function (a, s) { return a + s.pct; }, 0);
+    list[0].pct += fix;
+  }
+  return list;
+}
+
+function renderFeeShare() {
+  const box = document.getElementById('feeShareRows');
+  if (!box) return;
+  if (!ui.draft.shares) ui.draft.shares = [{ w: 'you', pct: 100 }];
+  box.innerHTML = ui.draft.shares.map(function (s, i) {
+    return '<div class="field" style="display:flex;gap:8px;align-items:center">' +
+      '<input data-share-w="' + i + '" value="' + esc(s.w) + '" placeholder="wallet / @kol" style="flex:1">' +
+      '<input data-share-p="' + i + '" type="number" min="0" max="100" value="' + s.pct + '" style="width:72px"> %' +
+      (i ? '<button type="button" class="ghost" data-share-del="' + i + '">×</button>' : '') +
+      '</div>';
+  }).join('');
+}
+
+function parseCast(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  let tick = '';
+  const dollar = raw.match(/\$([A-Za-z0-9]{2,8})/);
+  if (dollar) tick = dollar[1].toUpperCase();
+  if (!tick) {
+    const caps = raw.match(/\b([A-Z]{2,8})\b/);
+    if (caps) tick = caps[1];
+  }
+  if (!tick) tick = (raw.replace(/[^A-Za-z0-9]/g, '').slice(0, 6) || 'CAST').toUpperCase();
+  let name = raw.replace(/\$[A-Za-z0-9]{2,8}/, '').replace(/\s+/g, ' ').trim().slice(0, 28);
+  if (!name) name = tick + ' Cast';
+  return { name: name, ticker: tick, body: raw.slice(0, 180) };
+}
+
+function submitCastMint() {
+  const ta = document.getElementById('castBody');
+  const parsed = parseCast(ta && ta.value);
+  if (!parsed) { toast('Write a post first.', 'bad'); if (ta) ta.focus(); return; }
+  const v = VENUES[ui.draft.venue];
+  if (wallet.sol < v.launchFee) { toast('Need ' + v.launchFee + ' SOL for the ' + v.name + ' launch fee.', 'bad'); return; }
+  wallet.sol -= v.launchFee;
+  draftCoin = mkCoin({
+    name: parsed.name, ticker: parsed.ticker, avatar: ui.draft.avatar, venue: ui.draft.venue,
+    desc: parsed.body, isPlayer: true,
+    feeShare: normalizeShares(ui.draft.shares)
+  });
+  draftCoin.origin = 'cast';
+  draftCoin.castBody = parsed.body;
+  draftCoin.dev.wallet = 'you';
+  go('devbuy');
+  toast('Cast parsed · $' + parsed.ticker + ' · sim post, no network', 'ok');
 }
 
 function submitCreate() {
@@ -1403,7 +1472,8 @@ function submitCreate() {
   draftCoin = mkCoin({
     name: name, ticker: ticker, avatar: ui.draft.avatar, venue: ui.draft.venue,
     desc: val('cDesc'), twitter: val('cTw'), telegram: val('cTg'), website: val('cWeb'),
-    isPlayer: true
+    isPlayer: true,
+    feeShare: normalizeShares(ui.draft.shares)
   });
   draftCoin.dev.wallet = 'you';
   go('devbuy');
@@ -1678,7 +1748,7 @@ function render() {
 function wire() {
   document.addEventListener('click', function (ev) {
     const t = ev.target && ev.target.closest
-      ? ev.target.closest('[data-coin],[data-tab],[data-av],[data-venue],[data-amt],[data-dev],[data-nav],button')
+      ? ev.target.closest('[data-coin],[data-tab],[data-av],[data-venue],[data-amt],[data-dev],[data-nav],[data-share-del],button')
       : null;
     if (!t) return;
     const d = t.dataset || {};
@@ -1705,10 +1775,22 @@ function wire() {
       updateDevQuote(); return;
     }
 
+    if (d.shareDel != null && d.shareDel !== '') {
+      const i = +d.shareDel;
+      if (ui.draft.shares && i > 0) { ui.draft.shares.splice(i, 1); renderFeeShare(); }
+      return;
+    }
+
     switch (t.id) {
       case 'brandBtn':     go('board'); break;
       case 'walletChip':   go('you'); break;
       case 'createBtn':    go('create'); break;
+      case 'castMintBtn':  submitCastMint(); break;
+      case 'addShare':
+        if (!ui.draft.shares) ui.draft.shares = [{ w: 'you', pct: 100 }];
+        if (ui.draft.shares.length < 5) ui.draft.shares.push({ w: '', pct: 0 });
+        renderFeeShare();
+        break;
       case 'submitCreate': submitCreate(); break;
       case 'devBuyGo':     doDevBuy(Number((document.getElementById('devAmt') || {}).value) || 0); break;
       case 'devSkip':      doDevBuy(0); break;
@@ -1731,6 +1813,16 @@ function wire() {
   });
   document.addEventListener('input', function (ev) {
     if (ev.target && ev.target.id === 'devAmt') updateDevQuote();
+    const tw = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-share-w');
+    const tp = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-share-p');
+    if (tw != null) {
+      if (!ui.draft.shares) ui.draft.shares = [{ w: 'you', pct: 100 }];
+      ui.draft.shares[+tw].w = ev.target.value.trim();
+    }
+    if (tp != null) {
+      if (!ui.draft.shares) ui.draft.shares = [{ w: 'you', pct: 100 }];
+      ui.draft.shares[+tp].pct = Math.max(0, Math.min(100, +ev.target.value || 0));
+    }
   });
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Enter' && ev.target && ev.target.id === 'cmIn') { ev.preventDefault(); postComment(); }

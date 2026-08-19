@@ -66,6 +66,24 @@ h2 {
   margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
 }
 
+/* Cast-to-mint — social create path (sim post, no real network) */
+.cast-mint {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin: 0 0 12px;
+}
+.cast-mint label {
+  display: block; font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 8px;
+}
+.cast-mint textarea { width: 100%; margin-bottom: 8px; }
+.cast-origin {
+  font-size: .68rem; color: var(--accent); margin: 6px 0 0;
+  border: 1px dashed rgba(201,163,74,.35); border-radius: 8px; padding: 7px 9px;
+}
+
 /* ─── King of the Hill hero ─── */
 /* ─── THE HILL — KOTH competition panel ─── */
 .hill {

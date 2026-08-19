@@ -40,6 +40,12 @@
     <div id="liveFeed" class="livefeed" aria-label="Live activity across coins"></div>
     <div id="kingCard" class="king"></div>
 
+    <div class="cast-mint" id="castMint">
+      <label for="castBody">Cast to mint <span class="hint">sim post · no real X / Farcaster</span></label>
+      <textarea id="castBody" maxlength="180" rows="2" placeholder="just launched $DOGE2 because the original got boring"></textarea>
+      <button class="primary wide" id="castMintBtn" type="button">Post &amp; mint</button>
+      <p class="hint">Parses $TICKER from the text. Fictional only — nothing is posted, no market cap is claimed.</p>
+    </div>
     <button class="primary wide" id="createBtn">Create a coin</button>
 
     <nav class="tabs" id="boardTabs">
@@ -86,6 +92,13 @@
       <div class="field"><label for="cTw">Twitter / X</label><input id="cTw" placeholder="https://x.com/…" autocomplete="off"></div>
       <div class="field"><label for="cTg">Telegram</label><input id="cTg" placeholder="https://t.me/…" autocomplete="off"></div>
       <div class="field"><label for="cWeb">Website</label><input id="cWeb" placeholder="https://…" autocomplete="off"></div>
+    </details>
+
+    <details class="optional">
+      <summary>Creator forever-fee share <span class="hint">Bags-style split · sim only · you keep the rest</span></summary>
+      <p class="hint">Each trade's creator fee can be split across up to 5 wallets. Fictional. No real royalties.</p>
+      <div id="feeShareRows"></div>
+      <button type="button" class="ghost" id="addShare">+ split wallet</button>
     </details>
 
     <p class="hint" id="createFee"></p>
