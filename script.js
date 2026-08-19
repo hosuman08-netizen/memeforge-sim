@@ -862,6 +862,31 @@ function momPeakAgoChip(c) {
   }
   return '<span id="momPeakAgo" class="mom-peak-ago" title="sim mom peak elapsed · not live cap">' + label + '</span>';
 }
+/* WAVE122: 피크복귀칩. sim now/peak only. no invented cap · no live X · no live pay. */
+function momPeakBackChip(c) {
+  var v = +(c && c.momentum);
+  if (!isFinite(v)) v = computeMomentum(c || {});
+  var p = +(c && c.momPeak);
+  var t = +(c && c.momPeakAt);
+  if (!isFinite(p) || v > p) {
+    p = v;
+    t = Date.now();
+    if (c) { c.momPeak = p; c.momPeakAt = t; }
+  }
+  var label = '복귀 —';
+  var lvl = 'dim';
+  if (isFinite(p) && p > 0) {
+    var pct = Math.min(100, Math.round((v / p) * 100));
+    if (v >= p || pct >= 100) {
+      label = '복귀';
+      lvl = 'hot';
+    } else {
+      label = '복귀 ' + pct + '%';
+      lvl = pct >= 80 ? 'mid' : 'dim';
+    }
+  }
+  return '<span id="momPeakBack" class="mom-peak-back mg-' + lvl + '" title="sim now/peak · not live cap">' + label + '</span>';
+}
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
 function whyNow(c) {
@@ -1080,7 +1105,7 @@ function renderTokenHead(c) {
         '<div id="momChip">' + momChip(c) + '</div>' +
         momBar(c) +
         momPeakHtml(c) +
-        '<div id="momGapWrap">' + momGapChip(c) + momGapPctChip(c) + momPeakAtChip(c) + momPeakAgoChip(c) + '</div>' +
+        '<div id="momGapWrap">' + momGapChip(c) + momGapPctChip(c) + momPeakAtChip(c) + momPeakAgoChip(c) + momPeakBackChip(c) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
