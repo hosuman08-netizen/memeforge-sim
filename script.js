@@ -808,6 +808,18 @@ function momGapChip(c) {
   var lvl = g <= 0.05 ? 'hot' : g < 2 ? 'mid' : 'dim';
   return '<span id="momGap" class="mom-gap mg-' + lvl + '" title="sim mom peak−now · not live cap">Δ ' + g.toFixed(1) + '</span>';
 }
+/* WAVE100: gap%칩. sim (peak−now)/peak only. no invented cap · no live X · no live pay. */
+function momGapPctChip(c) {
+  var v = +(c && c.momentum);
+  if (!isFinite(v)) v = computeMomentum(c || {});
+  var p = +(c && c.momPeak);
+  if (!isFinite(p) || v > p) p = v;
+  if (c) c.momPeak = p;
+  var g = Math.max(0, p - v);
+  var pct = p > 0 ? Math.round((g / p) * 100) : 0;
+  var lvl = pct <= 1 ? 'hot' : pct < 20 ? 'mid' : 'dim';
+  return '<span id="momGapPct" class="mom-gap-pct mg-' + lvl + '" title="sim (peak−now)/peak · not live cap">' + pct + '%</span>';
+}
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
 function whyNow(c) {
@@ -1026,7 +1038,7 @@ function renderTokenHead(c) {
         '<div id="momChip">' + momChip(c) + '</div>' +
         momBar(c) +
         momPeakHtml(c) +
-        '<div id="momGapWrap">' + momGapChip(c) + '</div>' +
+        '<div id="momGapWrap">' + momGapChip(c) + momGapPctChip(c) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
