@@ -720,6 +720,30 @@ function boardCoins(tab) {
   return active;
 }
 
+/* GOLD50 TOP5: rug heuristics from this sim's holders/dev. No invented cap. */
+function rugFlags(c) {
+  const h = holderTable(c);
+  const flags = [];
+  if (c.dev && c.dev.sold) flags.push({ lvl: 'hi', t: 'dev sold' });
+  if (c.bundled && h.bundledPct >= 1) flags.push({ lvl: 'hi', t: 'bundle ' + h.bundledPct.toFixed(0) + '%' });
+  else if (h.devPct > 60) flags.push({ lvl: 'hi', t: 'dev ' + h.devPct.toFixed(0) + '%' });
+  if (h.top10 > 50 && !(c.bundled && h.bundledPct >= 1)) flags.push({ lvl: 'mid', t: 'top10 ' + h.top10.toFixed(0) + '%' });
+  if (!c.twitter && !c.telegram && !c.website) flags.push({ lvl: 'mid', t: 'no socials' });
+  if (c.graduated) flags.push({ lvl: 'ok', t: 'LP burned' });
+  const age = Math.max(0, Date.now() - (c.createdAt || Date.now()));
+  if (!c.graduated && age < 180000) flags.push({ lvl: 'mid', t: 'fresh <3m' });
+  if (!flags.length) flags.push({ lvl: 'ok', t: 'spread ok' });
+  return flags.slice(0, 3);
+}
+function rugChipHtml(c, compact) {
+  return '<div class="rug-chips">' +
+    rugFlags(c).map(function (f) {
+      return '<span class="rug-chip rc-' + f.lvl + '">' + f.t + '</span>';
+    }).join('') +
+    (compact ? '' : '<span class="rug-note">sim holders only · no live cap</span>') +
+  '</div>';
+}
+
 function coinRow(c) {
   const p = progress(c) * 100;
   const isKing = c.id === world.kingId;
@@ -729,7 +753,7 @@ function coinRow(c) {
     '<span class="row-av" style="--h:' + c.hue + '">' + c.avatar + '</span>' +
     '<span class="row-mid">' +
       '<span class="row-t">$' + esc(c.ticker) + (c.isPlayer ? '<em class="mine-tag">yours</em>' : '') + (isKing ? ' 👑' : '') + '</span>' +
-      '<span class="row-n">' + esc(c.name) + '</span>' +
+      '<span class="row-n">' + esc(c.name) + rugChipHtml(c, true) + '</span>' +
     '</span>' +
     '<span class="row-num">' +
       '<span class="row-mc">' + fmtUsd(mcapUsd(c)) + '</span>' +
@@ -915,7 +939,8 @@ function renderTokenHead(c) {
       (c.isPlayer ? '<span class="tk-you">your coin</span>' : '') +
       '<span>created ' + ago(c.createdAt) + ' ago</span>' +
       (c.twitter ? '<span>X ✓</span>' : '') + (c.telegram ? '<span>TG ✓</span>' : '') + (c.website ? '<span>web ✓</span>' : '') +
-      '<span class="tk-immutable">metadata immutable</span></div>';
+      '<span class="tk-immutable">metadata immutable</span></div>' +
+    rugChipHtml(c, false);
 }
 
 function renderStats(c) {

@@ -474,6 +474,17 @@ textarea { resize: vertical; }
 }
 .tk-you { color: var(--accent); }
 .tk-immutable { border-left: 1px solid var(--line-2); padding-left: 12px; }
+.rug-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0 0; }
+.row-n .rug-chips { margin-top: 3px; }
+.rug-chip {
+  font-size: .58rem; font-weight: 700; letter-spacing: .04em;
+  border-radius: 99px; padding: 1px 7px; border: 1px solid var(--line-2);
+  color: var(--muted);
+}
+.rug-chip.rc-hi { color: var(--down); border-color: rgba(224,115,111,.45); }
+.rug-chip.rc-mid { color: var(--accent); border-color: rgba(201,163,74,.4); }
+.rug-chip.rc-ok { color: var(--up); border-color: rgba(122,209,155,.4); }
+.rug-note { font-size: .58rem; color: var(--faint); }
 
 #meme-hype-canvas {
   display: block; width: 100%; height: auto; border-radius: var(--r);
