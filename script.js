@@ -919,6 +919,13 @@ function momPeakBackAtChip(c) {
   return '<span id="momPeakBackAt" class="mom-peak-back-at" title="sim return-to-peak clock · not live cap">' + label + '</span>';
 }
 /* WAVE140: 복귀시각 경과. sim now−momPeakBackAt only. no invented cap · no live X · no live pay. */
+/* WAVE152: 복귀경과 레벨. <60s hot · <1h mid · else dim. no invented cap. */
+function momPeakBackAgoLvl(sec, atPeak) {
+  if (!atPeak) return 'dim';
+  if (sec < 60) return 'hot';
+  if (sec < 3600) return 'mid';
+  return 'dim';
+}
 function momPeakBackAgoChip(c) {
   var v = +(c && c.momentum);
   if (!isFinite(v)) v = computeMomentum(c || {});
@@ -930,18 +937,21 @@ function momPeakBackAgoChip(c) {
     if (c) { c.momPeak = p; c.momPeakAt = t; c.momPeakBackAt = t; }
   }
   var label = '복귀경과 —';
-  if (isFinite(p) && p > 0 && v >= p) {
+  var atPeak = isFinite(p) && p > 0 && v >= p;
+  var sec = 0;
+  if (atPeak) {
     var bt = +(c && c.momPeakBackAt);
     if (!isFinite(bt) || bt <= 0) {
       bt = Date.now();
       if (c) c.momPeakBackAt = bt;
     }
-    var sec = Math.max(0, Math.floor((Date.now() - bt) / 1000));
+    sec = Math.max(0, Math.floor((Date.now() - bt) / 1000));
     if (sec < 60) label = '복귀경과 ' + sec + 's';
     else if (sec < 3600) label = '복귀경과 ' + Math.floor(sec / 60) + 'm';
     else label = '복귀경과 ' + Math.floor(sec / 3600) + 'h';
   }
-  return '<span id="momPeakBackAgo" class="mom-peak-back-ago" title="sim return-to-peak elapsed · not live cap">' + label + '</span>';
+  var lvl = momPeakBackAgoLvl(sec, atPeak);
+  return '<span id="momPeakBackAgo" class="mom-peak-back-ago mg-' + lvl + '" title="sim return-to-peak elapsed · not live cap">' + label + '</span>';
 }
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
