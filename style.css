@@ -449,7 +449,7 @@ button:disabled { opacity: .4; cursor: default; }
 .mom-peak-back-ago {
   display: inline-block; font-size: .58rem; letter-spacing: .02em;
   border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; margin: 6px 0 0 4px;
-  vertical-align: middle; color: var(--muted);
+  vertical-align: middle; color: var(--muted); cursor: pointer;
 }
 .mom-peak-back-ago.mg-hot { color: #f0cf8a; border-color: rgba(240,207,138,.45); }
 .mom-peak-back-ago.mg-mid { color: var(--muted); }

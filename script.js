@@ -920,11 +920,20 @@ function momPeakBackAtChip(c) {
 }
 /* WAVE140: 복귀시각 경과. sim now−momPeakBackAt only. no invented cap · no live X · no live pay. */
 /* WAVE152: 복귀경과 레벨. <60s hot · <1h mid · else dim. no invented cap. */
+/* WAVE161: 레벨칩 탭점프 → #momBar. sim only. no invented cap. */
 function momPeakBackAgoLvl(sec, atPeak) {
   if (!atPeak) return 'dim';
   if (sec < 60) return 'hot';
   if (sec < 3600) return 'mid';
   return 'dim';
+}
+function momPeakBackAgoJumpId() { return 'momBar'; }
+function jumpMomPeakBackAgo() {
+  var id = momPeakBackAgoJumpId();
+  var el = typeof document !== 'undefined' ? document.getElementById(id) : null;
+  if (!el) return '';
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
+  return id;
 }
 function momPeakBackAgoChip(c) {
   var v = +(c && c.momentum);
@@ -951,7 +960,7 @@ function momPeakBackAgoChip(c) {
     else label = '복귀경과 ' + Math.floor(sec / 3600) + 'h';
   }
   var lvl = momPeakBackAgoLvl(sec, atPeak);
-  return '<span id="momPeakBackAgo" class="mom-peak-back-ago mg-' + lvl + '" title="sim return-to-peak elapsed · not live cap">' + label + '</span>';
+  return '<span id="momPeakBackAgo" class="mom-peak-back-ago mg-' + lvl + '" role="button" tabindex="0" title="탭=모멘텀바 점프 · sim return-to-peak elapsed · not live cap">' + label + '</span>';
 }
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
@@ -2105,6 +2114,8 @@ function render() {
 
 function wire() {
   document.addEventListener('click', function (ev) {
+    const ago = ev.target && ev.target.closest ? ev.target.closest('#momPeakBackAgo') : null;
+    if (ago) { jumpMomPeakBackAgo(); return; }
     const t = ev.target && ev.target.closest
       ? ev.target.closest('[data-coin],[data-tab],[data-av],[data-venue],[data-amt],[data-dev],[data-nav],[data-share-del],[data-fiat],button')
       : null;
@@ -2185,6 +2196,9 @@ function wire() {
   });
   document.addEventListener('keydown', function (ev) {
     if (ev.key === 'Enter' && ev.target && ev.target.id === 'cmIn') { ev.preventDefault(); postComment(); }
+    if ((ev.key === 'Enter' || ev.key === ' ') && ev.target && ev.target.id === 'momPeakBackAgo') {
+      ev.preventDefault(); jumpMomPeakBackAgo();
+    }
   });
 }
 
