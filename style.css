@@ -398,6 +398,15 @@ button:disabled { opacity: .4; cursor: default; }
   padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
 }
 .mom-bar b { color: #f0cf8a; }
+.mom-bar.mom-flash {
+  animation: momFlash .7s ease-out;
+  outline: 2px solid #f0cf8a;
+  outline-offset: 2px;
+}
+@keyframes momFlash {
+  0% { box-shadow: 0 0 0 3px #f0cf8a; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
 .mom-track {
   display: block; height: 4px; margin-top: 6px;
   background: rgba(255,255,255,.05); border-radius: 2px; overflow: hidden;

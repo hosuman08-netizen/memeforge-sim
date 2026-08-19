@@ -921,6 +921,7 @@ function momPeakBackAtChip(c) {
 /* WAVE140: 복귀시각 경과. sim now−momPeakBackAt only. no invented cap · no live X · no live pay. */
 /* WAVE152: 복귀경과 레벨. <60s hot · <1h mid · else dim. no invented cap. */
 /* WAVE161: 레벨칩 탭점프 → #momBar. sim only. no invented cap. */
+/* WAVE166: 점프 후 모멘텀바 플래시. sim only. no invented cap. */
 function momPeakBackAgoLvl(sec, atPeak) {
   if (!atPeak) return 'dim';
   if (sec < 60) return 'hot';
@@ -928,11 +929,30 @@ function momPeakBackAgoLvl(sec, atPeak) {
   return 'dim';
 }
 function momPeakBackAgoJumpId() { return 'momBar'; }
+function momBarFlashMs() { return 700; }
+function flashMomBarAfterJump() {
+  var el = typeof document !== 'undefined' ? document.getElementById(momPeakBackAgoJumpId()) : null;
+  if (!el) return false;
+  if (el.classList) {
+    el.classList.remove('mom-flash');
+    void el.offsetWidth;
+    el.classList.add('mom-flash');
+  }
+  if (el.setAttribute) el.setAttribute('data-flash', '1');
+  if (el._flashT) try { clearTimeout(el._flashT); } catch (e0) {}
+  el._flashT = setTimeout(function () {
+    if (el.classList) el.classList.remove('mom-flash');
+    if (el.setAttribute) el.setAttribute('data-flash', '0');
+    el._flashT = 0;
+  }, momBarFlashMs());
+  return true;
+}
 function jumpMomPeakBackAgo() {
   var id = momPeakBackAgoJumpId();
   var el = typeof document !== 'undefined' ? document.getElementById(id) : null;
   if (!el) return '';
   try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
+  flashMomBarAfterJump();
   return id;
 }
 function momPeakBackAgoChip(c) {
