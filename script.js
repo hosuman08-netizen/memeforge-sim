@@ -770,6 +770,13 @@ function vVelChip(c) {
   var lvl = v >= 1 ? 'hot' : v >= 0.3 ? 'mid' : 'dim';
   return '<span class="vvel-chip vv-' + lvl + '" title="sim volume velocity · not live cap">v ' + v.toFixed(1) + '</span>';
 }
+/* WAVE67: momentum chip. sim computeMomentum only. no invented cap · no live X · no live pay. */
+function momChip(c) {
+  var v = +(c && c.momentum);
+  if (!isFinite(v)) v = computeMomentum(c || {});
+  var lvl = v >= 6 ? 'hot' : v >= 2 ? 'mid' : 'dim';
+  return '<span class="mom-chip mm-' + lvl + '" title="sim momentum · not live cap">m ' + v.toFixed(1) + '</span>';
+}
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
 function whyNow(c) {
@@ -804,7 +811,7 @@ function coinRow(c) {
     '<span class="row-mid">' +
       '<span class="row-t">$' + esc(c.ticker) + (c.isPlayer ? '<em class="mine-tag">yours</em>' : '') + (isKing ? ' 👑' : '') + '</span>' +
       '<span class="row-n">' + esc(c.name) + rugChipHtml(c, true) + '</span>' +
-      '<span class="row-why">' + esc(whyNow(c)) + ' ' + cVelChip(c) + ' ' + hVelChip(c) + ' ' + vVelChip(c) + '</span>' +
+      '<span class="row-why">' + esc(whyNow(c)) + ' ' + cVelChip(c) + ' ' + hVelChip(c) + ' ' + vVelChip(c) + ' ' + momChip(c) + '</span>' +
     '</span>' +
     '<span class="row-num">' +
       '<span class="row-mc">' + fmtUsd(mcapUsd(c)) + '</span>' +
@@ -985,6 +992,7 @@ function renderTokenHead(c) {
         '<div id="cVelChip">' + cVelChip(c) + '</div>' +
         '<div id="hVelChip">' + hVelChip(c) + '</div>' +
         '<div id="vVelChip">' + vVelChip(c) + '</div>' +
+        '<div id="momChip">' + momChip(c) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
