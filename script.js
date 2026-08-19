@@ -758,6 +758,12 @@ function cVelChip(c) {
   var lvl = v >= 1.5 ? 'hot' : v >= 0.5 ? 'mid' : 'dim';
   return '<span class="cvel-chip cv-' + lvl + '" title="sim comment velocity · not live X">c ' + v.toFixed(1) + '</span>';
 }
+/* WAVE56: holder velocity chip. sim hVel only. no invented cap · no live X. */
+function hVelChip(c) {
+  var v = +(c && c.hVel) || 0;
+  var lvl = v >= 1 ? 'hot' : v >= 0.3 ? 'mid' : 'dim';
+  return '<span class="hvel-chip hv-' + lvl + '" title="sim holder velocity · not live cap">h ' + v.toFixed(1) + '</span>';
+}
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
 function whyNow(c) {
@@ -791,7 +797,7 @@ function coinRow(c) {
     '<span class="row-mid">' +
       '<span class="row-t">$' + esc(c.ticker) + (c.isPlayer ? '<em class="mine-tag">yours</em>' : '') + (isKing ? ' 👑' : '') + '</span>' +
       '<span class="row-n">' + esc(c.name) + rugChipHtml(c, true) + '</span>' +
-      '<span class="row-why">' + esc(whyNow(c)) + ' ' + cVelChip(c) + '</span>' +
+      '<span class="row-why">' + esc(whyNow(c)) + ' ' + cVelChip(c) + ' ' + hVelChip(c) + '</span>' +
     '</span>' +
     '<span class="row-num">' +
       '<span class="row-mc">' + fmtUsd(mcapUsd(c)) + '</span>' +
@@ -970,6 +976,7 @@ function renderTokenHead(c) {
         '<div class="tk-n">' + esc(c.name) + '</div>' +
         '<div class="tk-why" id="whyNow">' + esc(whyNow(c)) + '</div>' +
         '<div id="cVelChip">' + cVelChip(c) + '</div>' +
+        '<div id="hVelChip">' + hVelChip(c) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
@@ -1122,6 +1129,7 @@ function renderTabBody(c) {
     if (!h.rows.length) { el.innerHTML = '<div class="empty">No holders yet — nobody has bought.</div>'; return; }
     const risk = h.top10 > 55 ? 'high' : h.top10 > 35 ? 'medium' : 'low';
     el.innerHTML =
+      '<div id="hVelBar" class="hvel-bar">sim holder velocity <b>' + ((c.hVel || 0).toFixed(1)) + '</b> · not live cap · no cap invented</div>' +
       '<div class="risk risk-' + risk + '"><b>Top-10 concentration ' + h.top10.toFixed(1) + '%</b> — ' + risk + ' risk. ' +
         (c.dev.sold ? 'The dev has sold their entire position.' : 'Dev holds ' + h.devPct.toFixed(1) + '%.') +
         (c.bundled ? ' Several top wallets trace back to the dev — this looks bundled.' : '') + '</div>' +
