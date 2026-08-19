@@ -109,7 +109,15 @@ function creatorFeePct(c) {
 
 const HISTORY_KEY  = 'memeforge.history';
 const WALLET_KEY   = 'memeforge.wallet';
+const ONRAMP_KEY   = 'memeforge.onramp';
 const START_SOL    = 10;
+/* WAVE35 TOP4: Bags/Moonshot-style fiat theater. Sim chips only. No card · no Apple charge · no real X. */
+const FIAT_ONRAMPS = [
+  { id: 'apple', name: 'Apple Pay', sol: 0.5 },
+  { id: 'coinbase', name: 'Coinbase Pay', sol: 0.5 },
+  { id: 'card', name: 'Card', sol: 1 }
+];
+const ONRAMP_DAY_CAP = 3;
 
 const world = {
   coins: [], byId: {},
@@ -1674,6 +1682,55 @@ function renderWalletChip() {
     (pv > 0.0001 ? '<span class="wc-pos">+' + fmtSol(pv) + ' in bags</span>' : '<span class="wc-pos">no positions</span>');
 }
 
+function onrampDay() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function loadOnramp() {
+  try {
+    const s = JSON.parse(localStorage.getItem(ONRAMP_KEY) || 'null');
+    if (s && s.d === onrampDay() && typeof s.n === 'number') return s;
+  } catch (e) {}
+  return { d: onrampDay(), n: 0 };
+}
+function renderFiatBar() {
+  let el = document.getElementById('fiatBar');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'fiatBar';
+    el.className = 'fiat-bar';
+    const note = document.querySelector('.simnote');
+    if (note && note.parentNode) note.parentNode.insertBefore(el, note.nextSibling);
+    else {
+      const host = document.querySelector('header');
+      if (host) host.insertAdjacentElement('afterend', el);
+      else document.body.insertBefore(el, document.body.firstChild);
+    }
+  }
+  const st = loadOnramp();
+  const left = Math.max(0, ONRAMP_DAY_CAP - st.n);
+  el.innerHTML = '<span class="fiat-lab">Buy sim SOL</span>' +
+    FIAT_ONRAMPS.map(function (p) {
+      return '<button type="button" class="fiat-chip" data-fiat="' + p.id + '"' +
+        (left <= 0 ? ' disabled' : '') + '>' + p.name + ' · +' + p.sol + '</button>';
+    }).join('') +
+    '<span class="fiat-cap">today ' + st.n + '/' + ONRAMP_DAY_CAP + '</span>' +
+    '<span class="fiat-note">SIM · no card charged · no real payment · no X</span>';
+}
+function simFiatCredit(id) {
+  const p = FIAT_ONRAMPS.filter(function (x) { return x.id === id; })[0];
+  if (!p) return;
+  const st = loadOnramp();
+  if (st.n >= ONRAMP_DAY_CAP) { toast('Sim cap ' + ONRAMP_DAY_CAP + '/day. No real payment.', 'bad'); return; }
+  wallet.sol += p.sol;
+  st.n += 1;
+  try { localStorage.setItem(ONRAMP_KEY, JSON.stringify(st)); } catch (e) {}
+  saveWallet();
+  remember('onramp', 'SIM ' + p.name + ' +' + p.sol + ' SOL · no charge');
+  toast('SIM +' + p.sol + ' SOL via ' + p.name + ' · card not charged.', 'ok');
+  render();
+}
+
 function renderPositions() {
   const el = document.getElementById('positionsOut');
   if (!el) return;
@@ -1799,6 +1856,7 @@ function renderMfLoop(){
 
 function render() {
   renderWalletChip();
+  try{renderFiatBar();}catch(e){}
   try{renderMfLoop();}catch(e){}
   if (ui.view === 'board') renderBoard();
   else if (ui.view === 'token') renderToken();
@@ -1810,7 +1868,7 @@ function render() {
 function wire() {
   document.addEventListener('click', function (ev) {
     const t = ev.target && ev.target.closest
-      ? ev.target.closest('[data-coin],[data-tab],[data-av],[data-venue],[data-amt],[data-dev],[data-nav],[data-share-del],button')
+      ? ev.target.closest('[data-coin],[data-tab],[data-av],[data-venue],[data-amt],[data-dev],[data-nav],[data-share-del],[data-fiat],button')
       : null;
     if (!t) return;
     const d = t.dataset || {};
@@ -1842,6 +1900,7 @@ function wire() {
       if (ui.draft.shares && i > 0) { ui.draft.shares.splice(i, 1); renderFeeShare(); }
       return;
     }
+    if (d.fiat) { simFiatCredit(d.fiat); return; }
 
     switch (t.id) {
       case 'brandBtn':     go('board'); break;

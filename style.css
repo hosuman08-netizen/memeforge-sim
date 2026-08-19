@@ -61,6 +61,22 @@ h2 {
 .wc-sol { font-size: .84rem; font-weight: 700; }
 .wc-pos { font-size: .64rem; color: var(--muted); }
 
+/* WAVE35: fiat onramp theater — sim chips, no card */
+.fiat-bar {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  margin: 0 0 12px; padding: 8px 10px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+}
+.fiat-lab { font-size: .68rem; font-weight: 700; letter-spacing: .04em; color: var(--accent); }
+.fiat-chip {
+  font: inherit; font-size: .68rem; font-weight: 700; cursor: pointer;
+  background: var(--sunk, #120f0c); color: var(--fg);
+  border: 1px solid var(--line-2); border-radius: 99px; padding: 4px 10px;
+}
+.fiat-chip:disabled { opacity: .45; cursor: not-allowed; }
+.fiat-cap { font-size: .62rem; color: var(--muted); }
+.fiat-note { font-size: .58rem; color: var(--faint); width: 100%; }
+
 .simnote {
   font-size: .68rem; color: var(--faint); letter-spacing: .01em;
   margin: 0 0 16px; padding-bottom: 12px; border-bottom: 1px solid var(--line);
