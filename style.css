@@ -407,6 +407,14 @@ button:disabled { opacity: .4; cursor: default; }
   font-size: .7rem; color: var(--muted); margin: 6px 0 0;
 }
 .mom-peak b { color: #f0cf8a; }
+.mom-gap {
+  display: inline-block; font-size: .58rem; letter-spacing: .02em;
+  border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; margin: 6px 0 0;
+  vertical-align: middle;
+}
+.mom-gap.mg-hot { color: #f0cf8a; border-color: rgba(240,207,138,.45); }
+.mom-gap.mg-mid { color: var(--muted); }
+.mom-gap.mg-dim { color: var(--faint); }
 .row-num { display: flex; flex-direction: column; align-items: flex-end; }
 .row-mc { font-size: .84rem; font-weight: 700; }
 .row-ch { font-size: .68rem; }
