@@ -764,6 +764,12 @@ function hVelChip(c) {
   var lvl = v >= 1 ? 'hot' : v >= 0.3 ? 'mid' : 'dim';
   return '<span class="hvel-chip hv-' + lvl + '" title="sim holder velocity · not live cap">h ' + v.toFixed(1) + '</span>';
 }
+/* WAVE62: volume velocity chip. sim vVel only. no invented cap · no live X · no live pay. */
+function vVelChip(c) {
+  var v = +(c && c.vVel) || 0;
+  var lvl = v >= 1 ? 'hot' : v >= 0.3 ? 'mid' : 'dim';
+  return '<span class="vvel-chip vv-' + lvl + '" title="sim volume velocity · not live cap">v ' + v.toFixed(1) + '</span>';
+}
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
 function whyNow(c) {
@@ -783,6 +789,7 @@ function whyNow(c) {
   if (!c.graduated && age < 180000) return 'just revealed · first buyers';
   if ((c.cVel || 0) >= 1.5) return 'comments heating';
   if ((c.hVel || 0) >= 1) return 'holders climbing';
+  if ((c.vVel || 0) >= 1) return 'volume heating';
   if (c.everKoth) return 'was KOTH · still on curve';
   return 'on curve · ' + ago(c.createdAt);
 }
@@ -797,7 +804,7 @@ function coinRow(c) {
     '<span class="row-mid">' +
       '<span class="row-t">$' + esc(c.ticker) + (c.isPlayer ? '<em class="mine-tag">yours</em>' : '') + (isKing ? ' 👑' : '') + '</span>' +
       '<span class="row-n">' + esc(c.name) + rugChipHtml(c, true) + '</span>' +
-      '<span class="row-why">' + esc(whyNow(c)) + ' ' + cVelChip(c) + ' ' + hVelChip(c) + '</span>' +
+      '<span class="row-why">' + esc(whyNow(c)) + ' ' + cVelChip(c) + ' ' + hVelChip(c) + ' ' + vVelChip(c) + '</span>' +
     '</span>' +
     '<span class="row-num">' +
       '<span class="row-mc">' + fmtUsd(mcapUsd(c)) + '</span>' +
@@ -977,6 +984,7 @@ function renderTokenHead(c) {
         '<div class="tk-why" id="whyNow">' + esc(whyNow(c)) + '</div>' +
         '<div id="cVelChip">' + cVelChip(c) + '</div>' +
         '<div id="hVelChip">' + hVelChip(c) + '</div>' +
+        '<div id="vVelChip">' + vVelChip(c) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
@@ -1104,7 +1112,9 @@ function renderTabBody(c) {
   if (!el) return;
 
   if (ui.tokenTab === 'trades') {
-    el.innerHTML = c.trades.length
+    el.innerHTML =
+      '<div id="vVelBar" class="vvel-bar">sim volume velocity <b>' + ((c.vVel || 0).toFixed(1)) + '</b> · not live cap · no cap invented</div>' +
+      (c.trades.length
       ? '<div class="tape">' + c.trades.map(function (t) {
           if (t.kind === 'grad') {
             return '<div class="tp grad"><span class="tp-w">migration</span><span class="tp-a">LP burned</span>' +
@@ -1120,7 +1130,7 @@ function renderTabBody(c) {
             '<span class="tp-k">' + fmtTok(t.tokens) + '</span>' +
             '<span class="tp-t">' + ago(t.ts) + '</span></div>';
         }).join('') + '</div>'
-      : '<div class="empty">No trades yet.</div>';
+      : '<div class="empty">No trades yet.</div>');
     return;
   }
 

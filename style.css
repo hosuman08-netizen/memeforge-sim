@@ -372,6 +372,19 @@ button:disabled { opacity: .4; cursor: default; }
   padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
 }
 .hvel-bar b { color: var(--up); }
+.vvel-chip {
+  display: inline-block; font-size: .58rem; letter-spacing: .02em;
+  border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; margin-left: 4px;
+  vertical-align: middle;
+}
+.vvel-chip.vv-hot { color: var(--violet); border-color: rgba(124,92,255,.45); }
+.vvel-chip.vv-mid { color: var(--muted); }
+.vvel-chip.vv-dim { color: var(--faint); }
+.vvel-bar {
+  font-size: .7rem; color: var(--muted); margin: 0 0 8px;
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px;
+}
+.vvel-bar b { color: var(--violet); }
 .row-num { display: flex; flex-direction: column; align-items: flex-end; }
 .row-mc { font-size: .84rem; font-weight: 700; }
 .row-ch { font-size: .68rem; }
