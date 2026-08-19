@@ -752,6 +752,28 @@ function rugChipHtml(c, compact) {
   '</div>';
 }
 
+/* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
+function whyNow(c) {
+  if (!c) return 'on curve';
+  if (c.id === world.kingId) return 'KOTH now · momentum holds the slot';
+  if (c.graduated) return 'off curve · LP burned';
+  var last = null, i;
+  for (i = 0; i < world.feed.length; i++) { if (world.feed[i].id === c.id) { last = world.feed[i]; break; } }
+  if (last) {
+    if (last.kind === 'whale') return 'whale buy just hit';
+    if (last.kind === 'koth') return 'took KOTH this tick';
+    if (last.kind === 'grad') return 'just graduated';
+    if (last.kind === 'devsell') return 'dev sold — heat, not safety';
+    if (last.kind === 'new') return 'just launched · first buyers';
+  }
+  var age = Math.max(0, Date.now() - (c.createdAt || Date.now()));
+  if (!c.graduated && age < 180000) return 'just revealed · first buyers';
+  if ((c.cVel || 0) >= 1.5) return 'comments heating';
+  if ((c.hVel || 0) >= 1) return 'holders climbing';
+  if (c.everKoth) return 'was KOTH · still on curve';
+  return 'on curve · ' + ago(c.createdAt);
+}
+
 function coinRow(c) {
   const p = progress(c) * 100;
   const isKing = c.id === world.kingId;
@@ -762,6 +784,7 @@ function coinRow(c) {
     '<span class="row-mid">' +
       '<span class="row-t">$' + esc(c.ticker) + (c.isPlayer ? '<em class="mine-tag">yours</em>' : '') + (isKing ? ' 👑' : '') + '</span>' +
       '<span class="row-n">' + esc(c.name) + rugChipHtml(c, true) + '</span>' +
+      '<span class="row-why">' + esc(whyNow(c)) + '</span>' +
     '</span>' +
     '<span class="row-num">' +
       '<span class="row-mc">' + fmtUsd(mcapUsd(c)) + '</span>' +
@@ -938,6 +961,7 @@ function renderTokenHead(c) {
           (c.id === world.kingId ? ' <span class="crown">👑 KOTH</span>' : '') +
           (c.graduated ? ' <span class="grad-tag">GRADUATED</span>' : '') + '</div>' +
         '<div class="tk-n">' + esc(c.name) + '</div>' +
+        '<div class="tk-why" id="whyNow">' + esc(whyNow(c)) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
