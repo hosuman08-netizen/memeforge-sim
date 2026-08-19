@@ -52,8 +52,26 @@ const VENUES = {
   moonforge: {
     id: 'moonforge', name: 'MoonForge', blurb: 'Costs 0.02 to launch and graduates far later — but burns supply on the way out.',
     launchFee: 0.02, gradSol: 500, burnAtGrad: 175000000, pool: 'RayPool'
+  },
+  clawforge: {
+    id: 'clawforge', name: 'ClawForge',
+    blurb: 'Anti-snipe tax decays 80%→5% over 3 sim-minutes. Same x*y=k. Extra cut is burned, not yield.',
+    launchFee: 0, gradSol: 85, burnAtGrad: 0, pool: 'ForgeSwap',
+    antiSnipe: true, snipeStart: 80, snipeEnd: 5, snipeWindowMs: 180000
   }
 };
+
+/* Clanker-style first-block tax. 0 on other venues. Not APY. */
+function snipeFeePct(c) {
+  const v = VENUES[c.venue];
+  if (!v || !v.antiSnipe) return 0;
+  const age = Math.max(0, Date.now() - (c.createdAt || Date.now()));
+  const t = Math.min(1, age / (v.snipeWindowMs || 180000));
+  return v.snipeStart + t * (v.snipeEnd - v.snipeStart);
+}
+function tradeSkimPct(c) {
+  return creatorFeePct(c) + snipeFeePct(c);
+}
 
 /* Price of the next token = SOL reserve / token reserve. */
 function price(c)     { return c.vSol / c.vTok; }
@@ -220,7 +238,7 @@ function mkCoin(opts) {
     hVel: 0, cVel: 0, vVel: 0, momentum: 0,
     kothAt: 0, everKoth: false,
 
-    graduated: false, graduatedAt: 0, burned: 0, dead: false,
+    graduated: false, graduatedAt: 0, burned: 0, snipeBurned: 0, dead: false,
     poolSol: 0, poolTokens: 0, gradPrice: 0, gradMcap: 0,
     hist: [], peak: 0, stream: 0,
 
@@ -249,7 +267,12 @@ function assignFate(c) {
 function spawnSimCoin() {
   const c = mkCoin({
     name: pick(NAME_A) + ' ' + pick(NAME_B),
-    venue: Math.random() < 0.16 ? 'moonforge' : 'pumpforge'
+    venue: (function () {
+      const r = Math.random();
+      if (r < 0.14) return 'moonforge';
+      if (r < 0.28) return 'clawforge';
+      return 'pumpforge';
+    })()
   });
   c.ticker = c.name.split(' ').map(function (w) { return w.slice(0, 3); }).join('').toUpperCase().slice(0, 7);
   assignFate(c);
@@ -303,16 +326,18 @@ function pushFeed(c, kind, sol, tokens) {
   if (world.feed.length > 26) world.feed.pop();
 }
 
-/* A buy that actually moves the curve. The creator fee is skimmed first. */
+/* A buy that actually moves the curve. Creator fee + optional anti-snipe burn. */
 function applyBuy(c, solIn, walletId, tag) {
   if (c.graduated || !(solIn > 0)) return 0;
   const fee = solIn * creatorFeePct(c) / 100;
-  const intoCurve = solIn - fee;
+  const snipe = solIn * snipeFeePct(c) / 100;
+  const intoCurve = Math.max(0, solIn - fee - snipe);
   const tokens = quoteBuy(c, intoCurve);
 
   c.vSol += intoCurve;
   c.vTok = CURVE.K / c.vSol;
   c.creatorFees += fee;
+  c.snipeBurned = (c.snipeBurned || 0) + snipe;
   c.volSol += solIn;
   c.buys++;
   c.hVel += 1; c.vVel += solIn;
@@ -393,7 +418,7 @@ function submitBuy() {
   if (wallet.sol < amt + pf) { toast('Not enough SOL. Sell something first.', 'bad'); return; }
 
   // quote at click time — this is what slippage tolerance is measured against
-  const tokens = quoteBuy(c, amt * (1 - creatorFeePct(c) / 100));
+  const tokens = quoteBuy(c, amt * (1 - tradeSkimPct(c) / 100));
   if (!(tokens > 0)) { toast('Quote failed.', 'bad'); return; }
 
   wallet.sol -= (amt + pf);       // the priority fee is spent whether or not it lands
@@ -435,7 +460,7 @@ function settlePending() {
     if (!c) continue;
 
     if (tx.kind === 'buy') {
-      const tokens = quoteBuy(c, tx.amt * (1 - creatorFeePct(c) / 100));
+      const tokens = quoteBuy(c, tx.amt * (1 - tradeSkimPct(c) / 100));
       if (!(tokens > 0)) { wallet.sol += tx.amt; continue; }
       const execPrice = tx.amt / tokens;
       const slipPct = (execPrice / tx.quotedPrice - 1) * 100;
@@ -886,6 +911,7 @@ function renderTokenHead(c) {
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
     (c.origin === 'cast' ? '<p class="cast-origin">Minted from a sim post — nothing was published. “' + esc((c.castBody || '').slice(0, 80)) + '”</p>' : '') +
     '<div class="tk-meta"><span>' + v.name + '</span>' +
+      (v.antiSnipe ? '<span class="tk-you">anti-snipe ' + snipeFeePct(c).toFixed(1) + '% → 5%</span>' : '') +
       (c.isPlayer ? '<span class="tk-you">your coin</span>' : '') +
       '<span>created ' + ago(c.createdAt) + ' ago</span>' +
       (c.twitter ? '<span>X ✓</span>' : '') + (c.telegram ? '<span>TG ✓</span>' : '') + (c.website ? '<span>web ✓</span>' : '') +
@@ -945,8 +971,9 @@ function renderTradePanel(c) {
     inflight++; if (inflight === 1) landIn = Math.max(0, pending[i].at - world.tick);
   }
 
-  const est = quoteBuy(c, ui.exec.amount * (1 - creatorFeePct(c) / 100));
+  const est = quoteBuy(c, ui.exec.amount * (1 - tradeSkimPct(c) / 100));
   const impact = est > 0 ? ((ui.exec.amount / est) / price(c) - 1) * 100 : 0;
+  const snipeNow = snipeFeePct(c);
 
   el.innerHTML = '<div class="card trade">' +
     '<div class="trade-simnote">Simulated order — no real funds move.</div>' +
@@ -959,7 +986,9 @@ function renderTradePanel(c) {
 
     '<div class="quote"><span>≈ ' + fmtTok(est) + ' $' + esc(c.ticker) + '</span>' +
       '<span class="' + (impact > 3 ? 'down' : '') + '">' + impact.toFixed(2) + '% price impact</span>' +
-      '<span>' + creatorFeePct(c).toFixed(2) + '% creator fee</span></div>' +
+      '<span>' + creatorFeePct(c).toFixed(2) + '% creator fee</span>' +
+      (snipeNow > 0 ? '<span>anti-snipe ' + snipeNow.toFixed(1) + '% burned</span>' : '') +
+      '</div>' +
 
     '<details class="adv"' + (ui.exec.slippage !== 15 || ui.exec.priority !== 0.001 ? ' open' : '') + '>' +
       '<summary>Slippage &amp; priority fee</summary>' +
@@ -1384,9 +1413,15 @@ function renderCreate() {
 
   const v = VENUES[ui.draft.venue];
   const fee = document.getElementById('createFee');
-  if (fee) fee.textContent = v.launchFee
-    ? v.name + ' charges ' + v.launchFee + ' SOL to launch, graduates at ' + v.gradSol + ' SOL, and burns ' + fmtTok(v.burnAtGrad) + ' tokens at migration.'
-    : v.name + ' is free to create. Your coin stays off-chain and invisible until the first buy.';
+  if (fee) {
+    if (v.launchFee) {
+      fee.textContent = v.name + ' charges ' + v.launchFee + ' SOL to launch, graduates at ' + v.gradSol + ' SOL, and burns ' + fmtTok(v.burnAtGrad) + ' tokens at migration.';
+    } else if (v.antiSnipe) {
+      fee.textContent = v.name + ' is free to create. First-buy tax starts at ' + v.snipeStart + '% and decays to ' + v.snipeEnd + '% over 3 sim-minutes. The extra cut is burned — not APY, not a real fee.';
+    } else {
+      fee.textContent = v.name + ' is free to create. Your coin stays off-chain and invisible until the first buy.';
+    }
+  }
 
   const btn = document.getElementById('submitCreate');
   if (btn) btn.textContent = v.launchFee ? 'Create coin — ' + v.launchFee + ' SOL' : 'Create coin — free';
@@ -1500,9 +1535,11 @@ function updateDevQuote() {
   if (!c || !el) return;
   const amt = Number(inp ? inp.value : 0) || 0;
   if (amt <= 0) { el.textContent = 'No dev buy — 0% dev holding, but the curve starts completely cold.'; return; }
-  const tok = quoteBuy(c, amt * (1 - 0.95 / 100));
+  const tok = quoteBuy(c, amt * (1 - tradeSkimPct(c) / 100));
+  const snipe = snipeFeePct(c);
   el.textContent = '≈ ' + fmtTok(tok) + ' tokens — ' + (tok / CURVE.TOTAL * 100).toFixed(2) +
-    '% of total supply. Opening price ' + fmtPrice(price(c)) + ' SOL.';
+    '% of total supply. Opening price ' + fmtPrice(price(c)) + ' SOL.' +
+    (snipe > 0 ? ' Anti-snipe ' + snipe.toFixed(1) + '% of this buy is burned (not APY).' : '');
 }
 
 function doDevBuy(amount) {
