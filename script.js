@@ -243,7 +243,7 @@ function mkCoin(opts) {
     creatorFees: 0,
     feeShare: Array.isArray(opts.feeShare) && opts.feeShare.length ? opts.feeShare : [{ w: opts.isPlayer ? 'you' : 'dev', pct: 100 }],
 
-    hVel: 0, cVel: 0, vVel: 0, momentum: 0,
+    hVel: 0, cVel: 0, vVel: 0, momentum: 0, momPeak: 0, momPeakAt: 0,
     kothAt: 0, everKoth: false,
 
     graduated: false, graduatedAt: 0, burned: 0, snipeBurned: 0, dead: false,
@@ -654,7 +654,10 @@ function scoreMomentum(c) {
   c.momentum = computeMomentum(c);
   var p = +c.momPeak;
   if (!isFinite(p)) p = 0;
-  if (c.momentum > p) c.momPeak = c.momentum;
+  if (c.momentum > p) {
+    c.momPeak = c.momentum;
+    c.momPeakAt = Date.now();
+  }
   return c.momentum;
 }
 
@@ -819,6 +822,25 @@ function momGapPctChip(c) {
   var pct = p > 0 ? Math.round((g / p) * 100) : 0;
   var lvl = pct <= 1 ? 'hot' : pct < 20 ? 'mid' : 'dim';
   return '<span id="momGapPct" class="mom-gap-pct mg-' + lvl + '" title="sim (peak−now)/peak · not live cap">' + pct + '%</span>';
+}
+/* WAVE107: 피크시각칩. sim momPeakAt clock only. no invented cap · no live X · no live pay. */
+function momPeakAtChip(c) {
+  var v = +(c && c.momentum);
+  if (!isFinite(v)) v = computeMomentum(c || {});
+  var p = +(c && c.momPeak);
+  var t = +(c && c.momPeakAt);
+  if (!isFinite(p) || v > p) {
+    p = v;
+    t = Date.now();
+    if (c) { c.momPeak = p; c.momPeakAt = t; }
+  }
+  var label = 'peak —';
+  if (isFinite(t) && t > 0) {
+    var d = new Date(t);
+    var hh = d.getHours(), mm = d.getMinutes(), ss = d.getSeconds();
+    label = 'peak ' + (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss;
+  }
+  return '<span id="momPeakAt" class="mom-peak-at" title="sim mom peak clock · not live cap">' + label + '</span>';
 }
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
@@ -1038,7 +1060,7 @@ function renderTokenHead(c) {
         '<div id="momChip">' + momChip(c) + '</div>' +
         momBar(c) +
         momPeakHtml(c) +
-        '<div id="momGapWrap">' + momGapChip(c) + momGapPctChip(c) + '</div>' +
+        '<div id="momGapWrap">' + momGapChip(c) + momGapPctChip(c) + momPeakAtChip(c) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
