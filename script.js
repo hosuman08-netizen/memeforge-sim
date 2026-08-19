@@ -925,6 +925,7 @@ function momPeakBackAtChip(c) {
 /* WAVE170: 플래시 중 재탭=바플래시즉끄기. sim only. no invented cap. */
 /* WAVE174: 끈 뒤 바 포커스. sim only. no invented cap. */
 /* WAVE180: 포커스 링. sim only. no invented cap. */
+/* WAVE186: 링 중 재탭=링 재시작. sim only. no invented cap. */
 function momPeakBackAgoLvl(sec, atPeak) {
   if (!atPeak) return 'dim';
   if (sec < 60) return 'hot';
@@ -942,19 +943,34 @@ function momBarFlashOn(el) {
   if (el.getAttribute && el.getAttribute('data-flash') === '1') return true;
   return false;
 }
+function momBarFocusRingOn(el) {
+  el = el || (typeof document !== 'undefined' ? document.getElementById(momPeakBackAgoJumpId()) : null);
+  if (!el) return false;
+  if (el._ringT) return true;
+  if (el.classList && el.classList.contains('mom-focus-ring')) return true;
+  if (el.getAttribute && el.getAttribute('data-focus-ring') === '1') return true;
+  return false;
+}
 function armMomBarFocusRing() {
   var el = typeof document !== 'undefined' ? document.getElementById(momPeakBackAgoJumpId()) : null;
   if (!el) return false;
+  var retr = momBarFocusRingOn(el);
   if (el.classList) {
     el.classList.remove('mom-focus-ring');
     void el.offsetWidth;
     el.classList.add('mom-focus-ring');
   }
-  if (el.setAttribute) el.setAttribute('data-focus-ring', '1');
+  if (el.setAttribute) {
+    el.setAttribute('data-focus-ring', '1');
+    el.setAttribute('data-re-ring', retr ? '1' : '0');
+  }
   if (el._ringT) try { clearTimeout(el._ringT); } catch (e0) {}
   el._ringT = setTimeout(function () {
     if (el.classList) el.classList.remove('mom-focus-ring');
-    if (el.setAttribute) el.setAttribute('data-focus-ring', '0');
+    if (el.setAttribute) {
+      el.setAttribute('data-focus-ring', '0');
+      el.setAttribute('data-re-ring', '0');
+    }
     el._ringT = 0;
   }, momBarFocusRingMs());
   return true;
@@ -1001,6 +1017,10 @@ function jumpMomPeakBackAgo() {
   if (!el) return '';
   if (momBarFlashOn(el)) {
     killMomBarFlash();
+    return id;
+  }
+  if (momBarFocusRingOn(el)) {
+    armMomBarFocusRing();
     return id;
   }
   try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { try { el.scrollIntoView(); } catch (e2) {} }
