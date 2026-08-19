@@ -441,6 +441,11 @@ button:disabled { opacity: .4; cursor: default; }
 .mom-peak-back.mg-hot { color: #f0cf8a; border-color: rgba(240,207,138,.45); }
 .mom-peak-back.mg-mid { color: var(--muted); }
 .mom-peak-back.mg-dim { color: var(--faint); }
+.mom-peak-back-at {
+  display: inline-block; font-size: .58rem; letter-spacing: .02em;
+  border: 1px solid var(--line); border-radius: 99px; padding: 0 6px; margin: 6px 0 0 4px;
+  vertical-align: middle; color: var(--muted);
+}
 .row-num { display: flex; flex-direction: column; align-items: flex-end; }
 .row-mc { font-size: .84rem; font-weight: 700; }
 .row-ch { font-size: .68rem; }

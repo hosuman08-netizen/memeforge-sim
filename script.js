@@ -243,7 +243,7 @@ function mkCoin(opts) {
     creatorFees: 0,
     feeShare: Array.isArray(opts.feeShare) && opts.feeShare.length ? opts.feeShare : [{ w: opts.isPlayer ? 'you' : 'dev', pct: 100 }],
 
-    hVel: 0, cVel: 0, vVel: 0, momentum: 0, momPeak: 0, momPeakAt: 0,
+    hVel: 0, cVel: 0, vVel: 0, momentum: 0, momPeak: 0, momPeakAt: 0, momPeakBackAt: 0,
     kothAt: 0, everKoth: false,
 
     graduated: false, graduatedAt: 0, burned: 0, snipeBurned: 0, dead: false,
@@ -657,6 +657,11 @@ function scoreMomentum(c) {
   if (c.momentum > p) {
     c.momPeak = c.momentum;
     c.momPeakAt = Date.now();
+    c.momPeakBackAt = Date.now();
+  } else if (p > 0 && c.momentum >= p) {
+    if (!c.momPeakBackAt) c.momPeakBackAt = Date.now();
+  } else {
+    c.momPeakBackAt = 0;
   }
   return c.momentum;
 }
@@ -887,6 +892,32 @@ function momPeakBackChip(c) {
   }
   return '<span id="momPeakBack" class="mom-peak-back mg-' + lvl + '" title="sim now/peak · not live cap">' + label + '</span>';
 }
+/* WAVE130: 복귀시각칩. sim momPeakBackAt clock only. no invented cap · no live X · no live pay. */
+function momPeakBackAtChip(c) {
+  var v = +(c && c.momentum);
+  if (!isFinite(v)) v = computeMomentum(c || {});
+  var p = +(c && c.momPeak);
+  var t = +(c && c.momPeakAt);
+  if (!isFinite(p) || v > p) {
+    p = v;
+    t = Date.now();
+    if (c) { c.momPeak = p; c.momPeakAt = t; c.momPeakBackAt = t; }
+  }
+  var label = '복귀시각 —';
+  if (isFinite(p) && p > 0 && v >= p) {
+    var bt = +(c && c.momPeakBackAt);
+    if (!isFinite(bt) || bt <= 0) {
+      bt = Date.now();
+      if (c) c.momPeakBackAt = bt;
+    }
+    var d = new Date(bt);
+    var hh = d.getHours(), mm = d.getMinutes(), ss = d.getSeconds();
+    label = '복귀시각 ' + (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm + ':' + (ss < 10 ? '0' : '') + ss;
+  } else if (c) {
+    c.momPeakBackAt = 0;
+  }
+  return '<span id="momPeakBackAt" class="mom-peak-back-at" title="sim return-to-peak clock · not live cap">' + label + '</span>';
+}
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
 function whyNow(c) {
@@ -1105,7 +1136,7 @@ function renderTokenHead(c) {
         '<div id="momChip">' + momChip(c) + '</div>' +
         momBar(c) +
         momPeakHtml(c) +
-        '<div id="momGapWrap">' + momGapChip(c) + momGapPctChip(c) + momPeakAtChip(c) + momPeakAgoChip(c) + momPeakBackChip(c) + '</div>' +
+        '<div id="momGapWrap">' + momGapChip(c) + momGapPctChip(c) + momPeakAtChip(c) + momPeakAgoChip(c) + momPeakBackChip(c) + momPeakBackAtChip(c) + '</div>' +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +
