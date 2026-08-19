@@ -652,6 +652,9 @@ function computeMomentum(c) { return c.hVel * 3.0 + c.cVel * 4.5 + c.vVel * 2.2;
 function scoreMomentum(c) {
   c.hVel *= 0.90; c.cVel *= 0.90; c.vVel *= 0.90;
   c.momentum = computeMomentum(c);
+  var p = +c.momPeak;
+  if (!isFinite(p)) p = 0;
+  if (c.momentum > p) c.momPeak = c.momentum;
   return c.momentum;
 }
 
@@ -784,6 +787,15 @@ function momBar(c) {
   var pct = Math.max(0, Math.min(100, Math.round((v / 12) * 100)));
   return '<div id="momBar" class="mom-bar">sim momentum <b>' + v.toFixed(1) + '</b> · not live cap · no cap invented'
     + '<span class="mom-track"><i style="width:' + pct + '%"></i></span></div>';
+}
+/* WAVE84: mom peak 1줄. sim computeMomentum max only. no invented cap · no live X · no live pay. */
+function momPeakHtml(c) {
+  var v = +(c && c.momentum);
+  if (!isFinite(v)) v = computeMomentum(c || {});
+  var p = +(c && c.momPeak);
+  if (!isFinite(p) || v > p) p = v;
+  if (c) c.momPeak = p;
+  return '<div id="momPeak" class="mom-peak">sim mom peak <b>' + p.toFixed(1) + '</b> · now ' + v.toFixed(1) + ' · not live cap · no cap invented</div>';
 }
 
 /* WAVE43 GOLD50 #5: board "why now" from this sim only. No invented cap. */
@@ -1002,6 +1014,7 @@ function renderTokenHead(c) {
         '<div id="vVelChip">' + vVelChip(c) + '</div>' +
         '<div id="momChip">' + momChip(c) + '</div>' +
         momBar(c) +
+        momPeakHtml(c) +
       '</div>' +
     '</div>' +
     (c.desc ? '<p class="tk-desc">' + esc(c.desc) + '</p>' : '') +

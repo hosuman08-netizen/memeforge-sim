@@ -403,6 +403,10 @@ button:disabled { opacity: .4; cursor: default; }
   background: rgba(255,255,255,.05); border-radius: 2px; overflow: hidden;
 }
 .mom-track i { display: block; height: 100%; background: rgba(240,207,138,.55); }
+.mom-peak {
+  font-size: .7rem; color: var(--muted); margin: 6px 0 0;
+}
+.mom-peak b { color: #f0cf8a; }
 .row-num { display: flex; flex-direction: column; align-items: flex-end; }
 .row-mc { font-size: .84rem; font-weight: 700; }
 .row-ch { font-size: .68rem; }
